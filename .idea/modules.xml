@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/live_plugin.iml" filepath="$PROJECT_DIR$/live_plugin.iml" />
+      <module fileurl="file://$PROJECT_DIR$/android/live_plugin_android.iml" filepath="$PROJECT_DIR$/android/live_plugin_android.iml" />
+      <module fileurl="file://$PROJECT_DIR$/example/android/live_plugin_example_android.iml" filepath="$PROJECT_DIR$/example/android/live_plugin_example_android.iml" />
+    </modules>
+  </component>
+</project>
