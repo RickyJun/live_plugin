@@ -1,7 +1,7 @@
 import Flutter
 import UIKit
 
-public class SwiftLivePlugin: NSObject, FlutterPlugin {
+@objc class SwiftLivePlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "live_plugin", binaryMessenger: registrar.messenger())
     let instance = SwiftLivePlugin()
