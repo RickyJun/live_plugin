@@ -9,11 +9,11 @@
 #import <libkern/OSAtomic.h>
 
 @interface LiveContaoller()
-@property(assign, nonatomic) int64_t textureId;
+
 @end
 
 @implementation LiveContaoller
-
+#pragma mark--LiveContaoller 方法
 - (instancetype)init
 {
     self = [super init];
@@ -44,10 +44,13 @@
     }
     return self;
 }
-#pragma mark--视频控制
-- (int64_t)getTextureId{
-    return _textureId;
+- (void)dealloc
+{
+    if(_latestPixelBuffer != nil){
+        CFRelease(_latestPixelBuffer);
+    }
 }
+#pragma mark--视频基础控制
 - (void)startRecord{
     [self.rtmpSession startRtmpSession:@"rtmp://192.168.1.104/live/123456"];
     
@@ -68,7 +71,7 @@
         [_filter removeAllTargets];
         [_videoCamera removeTarget:_filter];
     }
-    _filter = [Filters getFilterByEnum:type];
+    _filter = [Filters getFilterByType:type];
     if(_filter != nil){
         [_filter addTarget:self];
         [_videoCamera addTarget:_filter];
@@ -84,23 +87,59 @@
 - (void)swapCamera{
     [self.videoCamera rotateCamera];
 }
-- (void)setZoomByPercent{
-    
+- (void)pauseRecord{
+    [self.videoCamera pauseCameraCapture];
 }
-- (void)dealloc
-{
-    if(_latestPixelBuffer != nil){
-        CFRelease(_latestPixelBuffer);
+- (void)resumeRecord{
+    [self.videoCamera resumeCameraCapture];
+}
+#pragma mark--视频其他控制
+//摄像头焦距 [0.0f,1.0f]
+- (void)setZoomByPercent:(CGFloat)targetPercent{
+    [self.videoCamera.inputCamera setVideoZoomFactor:targetPercent];
+}
+//摄像头开关闪光灯
+- (void)toggleFlashLight{
+    AVCaptureFlashMode mode = self.videoCamera.inputCamera.flashMode == AVCaptureFlashModeOn?AVCaptureFlashModeOff:AVCaptureFlashModeOn;
+    [self.videoCamera.inputCamera setFlashMode:mode];
+}
+// 推流过程中，重新设置帧率
+- (void)reSetVideoFPS:(int32_t)fps{
+    [self.videoCamera setFrameRate:fps];
+}
+//推流过程中，重新设置码率
+- (void)reSetVideoBitrate:(NSString*)type{
+    [self.videoCamera.captureSession setSessionPreset:[Bitrates getBitrateByType:type]];
+}
+//截图
+- (void)takeScreenShot:(FlutterResult)result{
+    
+    //取_latestPixelBuffer转UIimage
+    //保存Image到本地
+    //返回path
+}
+/**
+    * 镜像
+    * @param isEnableMirror   是否启用镜像功能 总开关
+    *  isEnablePreviewMirror  是否开启预览镜像
+    * isEnableStreamMirror   是否开启推流镜像
+*/
+- (void)setMirror:(BOOL)isEnableMirror{
+    if([self.videoCamera isFrontFacingCameraPresent]){
+        [self.videoCamera setHorizontallyMirrorFrontFacingCamera:isEnableMirror];
+        
+    }else{
+        [self.videoCamera setHorizontallyMirrorRearFacingCamera:isEnableMirror];
     }
 }
-#pragma mark--视频数据处理回调
+#pragma mark--视频数据处理回调（PixelBufferDelegate）
 -(void)PixelBufferCallback:(CVPixelBufferRef)pixelFrameBuffer{
 //    unsigned long ulLen = CVPixelBufferGetDataSize(pixelFrameBuffer);
 //    unsigned long iWidth = CVPixelBufferGetWidth(pixelFrameBuffer);
 //    unsigned long iHeight = CVPixelBufferGetHeight(pixelFrameBuffer);
 //    int iFormatType = CVPixelBufferGetPixelFormatType(pixelFrameBuffer);
 //    NSLog(@"PixelBufferCallback: %lu X %lu, formattype=%d, ulLen=%lu", iWidth, iHeight, iFormatType, ulLen);
-    
+    //推送到服务端
     if(self.rtmpSession){
         [self.rtmpSession PutBuffer:pixelFrameBuffer];
     }

@@ -57,20 +57,22 @@ class LivePlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
       "getPlatformVersion" -> result.success("Android ${android.os.Build.VERSION.RELEASE}")
       //初始化推流控制器
       "initLiveConfig" -> {
+
         liveController = LiveController(this.activity,this.flutterPluginBinding.textureRegistry.createSurfaceTexture(),this.flutterPluginBinding.applicationContext)
         rtmpUrl = "rtmp://ossrs.net/" + StatusBarUtils.getRandomAlphaString(3) + '/' + StatusBarUtils.getRandomAlphaDigitString(5)
+        streamAVOption = StreamAVOption();
         streamAVOption.streamUrl = rtmpUrl
         liveController.init(this.activity,streamAVOption)
         liveController.addStreamStateListener(resConnectionListener)
         liveController.javaClass.methods.forEach { method -> methods[method.name]=method }
       }
       //设置视频滤镜
-      "setHardVideoFilter" -> {
-        liveController.setHardVideoFilterByName(call.arguments.toString())
+      "takeScreenShot" -> {
+        liveController.takeScreenShot(result)
       }
       else -> {
         if(methods.containsKey(call.method)){
-          methods[call.method]!!.invoke(null)
+          methods[call.method]!!.invoke(liveController,call.arguments)
         }
         result.notImplemented()
       }

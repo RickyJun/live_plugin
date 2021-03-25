@@ -11,7 +11,7 @@
 #import "GPUImage/Headers/GPUImageVideoCamera.h"
 #import "GPUImage/Headers/GPUImageMovieWriterEx.h"
 #import "RtmpLivePushSDK/VideoCore/api/iOS/VCRtmpSession.h"
-#import "Filters.h"
+#import "Constants.h"
 @interface LiveContaoller : NSObject<FlutterTexture,GPUImageInput,PixelBufferDelegate>
 //最新帧可用回调
 @property(nonatomic, copy) void (^onFrameAvailable)(void);
@@ -25,11 +25,31 @@
 @property (nonatomic, strong) GPUImageMovieWriterEx *movieWriter;
 //推流seesion
 @property (nonatomic, strong) VCRtmpSession* rtmpSession;
-- (int64_t)getTextureId;
-- (void)startRecord;
-- (void)stopRecord;
-- (void)swapCamera;
+@property(assign, nonatomic) int64_t textureId;
+//设置/切换滤镜
 - (void)setHardVideoFilterByName:(NSString *)type;
+//开始录像
+- (void)startRecord;
+//暂停
+- (void)pauseRecord;
+//恢复
+- (void)resumeRecord;
+//终止录像
+- (void)stopRecord;
+//切换摄像头
+- (void)swapCamera;
+//摄像头焦距 [0.0f,1.0f]
+- (void)setZoomByPercent:(CGFloat)targetPercent;
+//摄像头开关闪光灯
+- (void)toggleFlashLight;
+// 推流过程中，重新设置帧率
+- (void)reSetVideoFPS:(int32_t)fps;
+//推流过程中，重新设置码率
+- (void)reSetVideoBitrate:(NSString*)type;
+//截图
+- (void)takeScreenShot:(FlutterResult)result;
+//镜像
+- (void)setMirror:(BOOL)isEnableMirror;
 @end
 
 

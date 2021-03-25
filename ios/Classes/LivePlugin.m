@@ -35,13 +35,10 @@ LiveContaoller *liveController;
         liveController.onFrameAvailable = ^{
             [self->_registrarTextures textureFrameAvailable:liveController.textureId];
         };
-    }else if([call.method isEqualToString:@"setHardVideoFilter"]){
-        //设置视频滤镜
-        
     }else{
         SEL method = NSSelectorFromString(call.method);
         if(method != nil && [liveController respondsToSelector:method]){
-            SuppressPerformSelectorLeakWarning([liveController performSelector:method]);
+            SuppressPerformSelectorLeakWarning([liveController performSelector:method withObject:call.arguments]);
         }
     }
 }

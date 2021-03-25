@@ -3,6 +3,8 @@ package com.rick.live.live_plugin
 import android.app.Activity
 import android.content.Context
 import android.graphics.SurfaceTexture
+import android.view.Surface
+import io.flutter.plugin.common.MethodChannel
 import io.flutter.view.TextureRegistry
 import me.lake.librestreaming.client.RESClient
 import me.lake.librestreaming.core.listener.RESConnectionListener
@@ -28,7 +30,7 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
     private lateinit var resClient: RESClient
     private var resConfig: RESConfig? = null
     private var surfaceTexture: SurfaceTexture? = null
-    private var avOption: StreamAVOption? = null
+    private lateinit var avOption: StreamAVOption
     private var outerStreamStateListeners: java.util.ArrayList<RESConnectionListener> = ArrayList()
     private val quality_value_min = 400 * 1024
     private val quality_value_max = 700 * 1024
@@ -51,13 +53,7 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
         var isSucceed = this.resClient.prepare(this.resConfig)
         //初始化texture到resclient
         surfaceTexture = flutterTexture.surfaceTexture()
-        //设置连接状态，视频状态监等等其他监听
-        surfaceTexture!!.setOnFrameAvailableListener { surfaceTexture ->
-            if(resClient != null){
-                print("surfaceTexture set suuuu==================")
-                resClient.startPreview(surfaceTexture,avOption!!.videoWidth,avOption!!.videoHeight)
-            }
-        }
+
         addListenerAndFilter()
     }
 
@@ -65,17 +61,15 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
      * destroy
      */
     fun destroy() {
-        if (this.resClient != null) {
-            this.resClient.setConnectionListener(null)
-            this.resClient.setVideoChangeListener(null)
-            if (this.resClient.isStreaming) {
-                this.resClient.stopStreaming()
-            }
-            if (isRecord()) {
-                stopRecord()
-            }
-            this.resClient.destroy()
+        this.resClient.setConnectionListener(null)
+        this.resClient.setVideoChangeListener(null)
+        if (this.resClient.isStreaming) {
+            this.resClient.stopStreaming()
         }
+        if (isRecord()) {
+            stopRecord()
+        }
+        this.resClient.destroy()
     }
 
     /**
@@ -89,7 +83,8 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
     }
 
     //获取textureId
-    fun getTextureId() = flutterTexture.id()
+    var textureId:Long? = null
+        get() = flutterTexture.id()
     //连接状态监听
     private var ConnectionListener: RESConnectionListener = object : RESConnectionListener {
         override fun onOpenConnectionResult(result: Int) {
@@ -126,25 +121,22 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
      */
     var mMediaEncoderListener: MediaEncoder.MediaEncoderListener = object : MediaEncoder.MediaEncoderListener {
         override fun onPrepared(encoder: MediaEncoder?) {
-            if (encoder is MediaVideoEncoder && resClient != null) resClient!!.setVideoEncoder(encoder as MediaVideoEncoder?)
+            if (encoder is MediaVideoEncoder && resClient != null) resClient.setVideoEncoder(encoder as MediaVideoEncoder?)
         }
 
         override fun onStopped(encoder: MediaEncoder?) {
-            if (encoder is MediaVideoEncoder && resClient != null) resClient!!.setVideoEncoder(null)
+            if (encoder is MediaVideoEncoder && resClient != null) resClient.setVideoEncoder(null)
         }
     }
     private fun addListenerAndFilter() {
-        if (this.resClient != null) {
             this.resClient.setConnectionListener(ConnectionListener)
             this.resClient.setVideoChangeListener(VideoChangeListener)
             this.resClient.setSoftAudioFilter(SetVolumeAudioFilter())
-        }
+
     }
     @Synchronized
     fun getRESClient(): RESClient? {
-        if (this.resClient == null) {
-            this.resClient = RESClient()
-        }
+        this.resClient = RESClient()
         return this.resClient
     }
     private fun compatibleSize(avOptions: StreamAVOption) {
@@ -164,9 +156,9 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
      * 设置上下文
      */
     fun setContext(context: Context?) {
-        if (this.resClient != null) {
-            this.resClient!!.setContext(context)
-        }
+
+        this.resClient.setContext(context)
+
     }
     /**
      * 是否在录制
@@ -177,69 +169,64 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
 
 
     /**
-     * 开始推流
+     * 开始推流,
      */
     fun startStreaming(rtmpUrl: String?) {
-        if (this.resClient != null) {
-            this.resClient.startStreaming(rtmpUrl)
-        }
+        this.resClient.startStreaming(rtmpUrl)
     }
 
     /**
-     * 停止推流
+     * 停止推流,关闭推流
      */
     fun stopStreaming() {
-        if (this.resClient != null) {
-            this.resClient.stopStreaming()
-        }
+        this.resClient.stopStreaming()
     }
 
     /**
      * 开始录制
      */
-    private var mMuxer: MediaMuxerWrapper? = null
+    private lateinit var mMuxer: MediaMuxerWrapper
     private var isRecord = false
     fun startRecord() {
-        startStreaming(this.avOption!!.streamUrl)
-        if (this.resClient != null) {
-            this.resClient.setNeedResetEglContext(true)
-            try {
-                mMuxer = MediaMuxerWrapper(".mp4") // if you record audio only, ".m4a" is also OK.
-                MediaVideoEncoder(mMuxer, mMediaEncoderListener, StreamAVOption.recordVideoWidth, StreamAVOption.recordVideoHeight)
-                MediaAudioEncoder(mMuxer, mMediaEncoderListener)
-                mMuxer!!.prepare()
-                mMuxer!!.startRecording()
-                isRecord = true
-            } catch (e: IOException) {
-                isRecord = false
-                e.printStackTrace()
-            }
+        resClient.startPreview(surfaceTexture,avOption.videoWidth,avOption.videoHeight)
+        startStreaming(this.avOption.streamUrl)
+        this.resClient.setNeedResetEglContext(true)
+        try {
+            mMuxer = MediaMuxerWrapper(".mp4") // if you record audio only, ".m4a" is also OK.
+            MediaVideoEncoder(mMuxer, mMediaEncoderListener, StreamAVOption.recordVideoWidth, StreamAVOption.recordVideoHeight)
+            MediaAudioEncoder(mMuxer, mMediaEncoderListener)
+            mMuxer.prepare()
+            mMuxer.startRecording()
+            isRecord = true
+                    } catch (e: IOException) {
+            isRecord = false
+            e.printStackTrace()
         }
+
+    }
+    fun pauseRecord(){
+        resClient.stopPreview(false)
+    }
+    fun resumeRecord(){
+        resClient.startPreview(surfaceTexture,avOption.videoWidth,avOption.videoHeight)
     }
     /**
      * 停止录制
      */
     fun stopRecord(): String? {
         isRecord = false
-        if (mMuxer != null) {
-            val path: String = mMuxer!!.getFilePath()
-            mMuxer!!.stopRecording()
-            mMuxer = null
-            stopStreaming()
-            System.gc()
-            return path
-        }
+        val path: String = mMuxer.getFilePath()
+        mMuxer.stopRecording()
+        stopStreaming()
         System.gc()
-        return null
+        return path
     }
 
     /**
      * 切换摄像头
      */
     fun swapCamera() {
-        if (this.resClient != null) {
-            this.resClient.swapCamera()
-        }
+        this.resClient.swapCamera()
     }
 
     /**
@@ -272,33 +259,36 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
     /**
      * 推流过程中，重新设置码率
      */
-    fun reSetVideoBitrate(bitrate: Int) {
+    fun reSetVideoBitrate(type: String) {
         if (this.resClient != null) {
-            this.resClient.reSetVideoBitrate(bitrate)
+            this.resClient.reSetVideoBitrate(Bitrates.getBitrateByType(type))
         }
     }
 
     /**
      * 截图
      */
-    fun takeScreenShot(listener: RESScreenShotListener?) {
+    fun takeScreenShot(result: MethodChannel.Result) {
         if (this.resClient != null) {
-            this.resClient.takeScreenShot(listener)
+            this.resClient.takeScreenShot{
+                //存储bitmap到本地data
+                //返回文件路径到flutter】
+                //result.success(path)
+            }
         }
     }
 
     /**
      * 镜像
      * @param isEnableMirror   是否启用镜像功能 总开关
-     * @param isEnablePreviewMirror  是否开启预览镜像
-     * @param isEnableStreamMirror   是否开启推流镜像
+     * isEnablePreviewMirror  是否开启预览镜像
+     *  isEnableStreamMirror   是否开启推流镜像
      */
-    fun setMirror(isEnableMirror: Boolean, isEnablePreviewMirror: Boolean, isEnableStreamMirror: Boolean) {
+    fun setMirror(isEnableMirror: Boolean) {
         if (this.resClient != null) {
-            this.resClient.setMirror(isEnableMirror, isEnablePreviewMirror, isEnableStreamMirror)
+            this.resClient.setMirror(isEnableMirror, isEnableMirror, isEnableMirror)
         }
     }
-
 
 
     /**
@@ -306,7 +296,7 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
      */
     fun setHardVideoFilterByName(type: String) {
         if (this.resClient != null) {
-            val filter:BaseHardVideoFilter = Filters.getFilterByEnum(type)
+            val filter:BaseHardVideoFilter = Filters.getFilterByType(type)
             this.resClient.setHardVideoFilter(filter)
         }
     }
