@@ -7,27 +7,31 @@
 
 #import "LiveContaoller.h"
 #import <libkern/OSAtomic.h>
+
+@interface LiveContaoller()
+@property(assign, nonatomic) int64_t textureId;
+@end
+
 @implementation LiveContaoller
 
 - (instancetype)init
 {
     self = [super init];
     if (self) {
+        //初始化session
         self.rtmpSession = [[VCRtmpSession alloc] initWithVideoSize:VIDEO_SIZE_CIF fps:25 bitrate:BITRATE_CIF];
-        [self.rtmpSession startRtmpSession:@"rtmp://192.168.1.104/live/123456"];
         [[GPUImageContext sharedFramebufferCache] purgeAllUnassignedFramebuffers];
         //初始化播放器
         self.videoCamera = [[GPUImageVideoCamera alloc] initWithSessionPreset:AVCaptureSessionPreset1280x720 cameraPosition:AVCaptureDevicePositionFront];
         self.videoCamera.outputImageOrientation = UIInterfaceOrientationPortrait;
         self.videoCamera.horizontallyMirrorFrontFacingCamera = NO;
         self.videoCamera.horizontallyMirrorRearFacingCamera = NO;
-        //设置播放器的屏幕尺寸
+        //设置预览的屏幕尺寸
         AVCaptureSession* session = self.videoCamera.captureSession;
         AVCaptureVideoPreviewLayer* previewLayer;
         previewLayer = [AVCaptureVideoPreviewLayer layerWithSession:session];
         previewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
         previewLayer.frame = [UIScreen mainScreen].bounds;
-    
         //初始化编码器
         NSString *pathToMovie = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/Movie.m4v"];
         unlink([pathToMovie UTF8String]); // If a file already exists, AVAssetWriter won't let you record new frames, so delete the old movie
@@ -41,17 +45,46 @@
     return self;
 }
 #pragma mark--视频控制
-- (void)startCameraCapture{
+- (int64_t)getTextureId{
+    return _textureId;
+}
+- (void)startRecord{
+    [self.rtmpSession startRtmpSession:@"rtmp://192.168.1.104/live/123456"];
+    
     [self.videoCamera startCameraCapture];
     
     [self.movieWriter startRecording];
 }
-- (void)closeCamera{
+
+//设置/切换滤镜
+- (void)setHardVideoFilterByName:(NSString *)type{
+    if(type == nil){
+        return;
+    }
+    if([[_videoCamera targets] containsObject:self]){
+        [_videoCamera removeTarget:self];
+    }
+    if(_filter != nil){
+        [_filter removeAllTargets];
+        [_videoCamera removeTarget:_filter];
+    }
+    _filter = [Filters getFilterByEnum:type];
+    if(_filter != nil){
+        [_filter addTarget:self];
+        [_videoCamera addTarget:_filter];
+    }
+}
+- (void)stopRecord{
+    [self.rtmpSession endRtmpSession];
     [self.videoCamera stopCameraCapture];
-    
     [self.movieWriter cancelRecording];
     [self.videoCamera removeTarget:self];
     [self.videoCamera removeTarget:self.movieWriter];
+}
+- (void)swapCamera{
+    [self.videoCamera rotateCamera];
+}
+- (void)setZoomByPercent{
     
 }
 - (void)dealloc
@@ -75,6 +108,7 @@
 #pragma mark--FlutterTexture 方法
 - (CVPixelBufferRef _Nullable)copyPixelBuffer {
     CVPixelBufferRef pixelBufferRef = _latestPixelBuffer;
+    //并发处理，线程安全
     while (!OSAtomicCompareAndSwapPtrBarrier(pixelBufferRef, nil, (void**)&_latestPixelBuffer)) {
         pixelBufferRef = _latestPixelBuffer;
     }

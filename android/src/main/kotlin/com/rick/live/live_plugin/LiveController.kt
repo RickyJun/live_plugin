@@ -78,9 +78,6 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
         }
     }
 
-
-
-
     /**
      * 添加推流状态监听
      * @param listener
@@ -203,6 +200,7 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
     private var mMuxer: MediaMuxerWrapper? = null
     private var isRecord = false
     fun startRecord() {
+        startStreaming(this.avOption!!.streamUrl)
         if (this.resClient != null) {
             this.resClient.setNeedResetEglContext(true)
             try {
@@ -227,6 +225,7 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
             val path: String = mMuxer!!.getFilePath()
             mMuxer!!.stopRecording()
             mMuxer = null
+            stopStreaming()
             System.gc()
             return path
         }
@@ -301,12 +300,14 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
     }
 
 
+
     /**
      * 设置滤镜
      */
-    fun setHardVideoFilter(baseHardVideoFilter: BaseHardVideoFilter?) {
+    fun setHardVideoFilterByName(type: String) {
         if (this.resClient != null) {
-            this.resClient.setHardVideoFilter(baseHardVideoFilter)
+            val filter:BaseHardVideoFilter = Filters.getFilterByEnum(type)
+            this.resClient.setHardVideoFilter(filter)
         }
     }
 

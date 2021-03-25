@@ -10,9 +10,7 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import me.lake.librestreaming.core.listener.RESConnectionListener
-import me.lake.librestreaming.filter.hardvideofilter.BaseHardVideoFilter
 import me.lake.librestreaming.ws.StreamAVOption
-import com.rick.live.live_plugin.Filters
 import java.lang.reflect.Method
 
 /** LivePlugin */
@@ -68,8 +66,7 @@ class LivePlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
       }
       //设置视频滤镜
       "setHardVideoFilter" -> {
-        val filter:BaseHardVideoFilter = Filters.getFilterByEnum(call.arguments.toString())
-        liveController.setHardVideoFilter(filter)
+        liveController.setHardVideoFilterByName(call.arguments.toString())
       }
       else -> {
         if(methods.containsKey(call.method)){
