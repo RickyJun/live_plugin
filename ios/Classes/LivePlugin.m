@@ -35,6 +35,8 @@ LiveContaoller *liveController;
         liveController.onFrameAvailable = ^{
             [self->_registrarTextures textureFrameAvailable:liveController.textureId];
         };
+    }else if([call.method isEqual:@"takeScreenShot"]){
+        [liveController takeScreenShot:result];
     }else{
         SEL method = NSSelectorFromString(call.method);
         if(method != nil && [liveController respondsToSelector:method]){

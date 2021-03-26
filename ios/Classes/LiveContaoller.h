@@ -12,6 +12,7 @@
 #import "GPUImage/Headers/GPUImageMovieWriterEx.h"
 #import "RtmpLivePushSDK/VideoCore/api/iOS/VCRtmpSession.h"
 #import "Constants.h"
+
 @interface LiveContaoller : NSObject<FlutterTexture,GPUImageInput,PixelBufferDelegate>
 //最新帧可用回调
 @property(nonatomic, copy) void (^onFrameAvailable)(void);
@@ -25,7 +26,11 @@
 @property (nonatomic, strong) GPUImageMovieWriterEx *movieWriter;
 //推流seesion
 @property (nonatomic, strong) VCRtmpSession* rtmpSession;
+
+
 @property(assign, nonatomic) int64_t textureId;
+
+- (NSInteger)recordStatus;
 //设置/切换滤镜
 - (void)setHardVideoFilterByName:(NSString *)type;
 //开始录像
@@ -50,6 +55,7 @@
 - (void)takeScreenShot:(FlutterResult)result;
 //镜像
 - (void)setMirror:(BOOL)isEnableMirror;
+
 @end
 
 

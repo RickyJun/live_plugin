@@ -23,7 +23,11 @@ import me.lake.librestreaming.ws.StreamLiveCameraView
 import me.lake.librestreaming.ws.filter.audiofilter.SetVolumeAudioFilter
 import java.io.IOException
 
-
+enum class RecordStatus{
+    Stop,
+    Recording,
+    Pause
+}
 class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.SurfaceTextureEntry, context: Context?) {
 
 
@@ -32,6 +36,7 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
     private var surfaceTexture: SurfaceTexture? = null
     private lateinit var avOption: StreamAVOption
     private var outerStreamStateListeners: java.util.ArrayList<RESConnectionListener> = ArrayList()
+    private var recordStatus:RecordStatus = RecordStatus.Stop
     private val quality_value_min = 400 * 1024
     private val quality_value_max = 700 * 1024
     /**
@@ -66,7 +71,7 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
         if (this.resClient.isStreaming) {
             this.resClient.stopStreaming()
         }
-        if (isRecord()) {
+        if (recordStatus == RecordStatus.Recording) {
             stopRecord()
         }
         this.resClient.destroy()
@@ -163,8 +168,8 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
     /**
      * 是否在录制
      */
-    fun isRecord(): Boolean {
-        return isRecord
+    fun recordStatus(): Int {
+        return recordStatus.ordinal
     }
 
 
@@ -186,7 +191,7 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
      * 开始录制
      */
     private lateinit var mMuxer: MediaMuxerWrapper
-    private var isRecord = false
+
     fun startRecord() {
         resClient.startPreview(surfaceTexture,avOption.videoWidth,avOption.videoHeight)
         startStreaming(this.avOption.streamUrl)
@@ -197,24 +202,31 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
             MediaAudioEncoder(mMuxer, mMediaEncoderListener)
             mMuxer.prepare()
             mMuxer.startRecording()
-            isRecord = true
+            recordStatus = RecordStatus.Recording
                     } catch (e: IOException) {
-            isRecord = false
+            recordStatus = RecordStatus.Stop
             e.printStackTrace()
         }
 
     }
     fun pauseRecord(){
-        resClient.stopPreview(false)
+        if(recordStatus == RecordStatus.Recording){
+            resClient.stopPreview(false)
+            recordStatus = RecordStatus.Pause
+        }
+
     }
     fun resumeRecord(){
-        resClient.startPreview(surfaceTexture,avOption.videoWidth,avOption.videoHeight)
+        if(recordStatus == RecordStatus.Pause || recordStatus == RecordStatus.Stop){
+            resClient.startPreview(surfaceTexture,avOption.videoWidth,avOption.videoHeight)
+            recordStatus = RecordStatus.Recording
+        }
     }
     /**
      * 停止录制
      */
     fun stopRecord(): String? {
-        isRecord = false
+        recordStatus = RecordStatus.Stop
         val path: String = mMuxer.getFilePath()
         mMuxer.stopRecording()
         stopStreaming()
@@ -302,18 +314,18 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
     }
 
     /**
-     * 获取BufferFreePercent
+     * 获取BufferFreePercent,获取发送缓存区的剩余空间比，0则已经满了，说明网络阻塞或者太慢
      */
-    fun getSendBufferFreePercent(): Float {
-        return this.resClient.sendBufferFreePercent
-    }
+//    fun getSendBufferFreePercent(): Float {
+//        return this.resClient.sendBufferFreePercent
+//    }
 
     /**
      * AVSpeed 推流速度 和网络相关
      */
-    fun getAVSpeed(): Int {
-        return this.resClient.avSpeed
-    }
+//    fun getAVSpeed(): Int {
+//        return this.resClient.avSpeed
+//    }
 
 
 }

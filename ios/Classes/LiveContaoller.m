@@ -7,13 +7,20 @@
 
 #import "LiveContaoller.h"
 #import <libkern/OSAtomic.h>
-
+typedef NS_ENUM(NSInteger,RecordStatus) {
+    Stop,
+    Recording,
+    Pause
+};
 @interface LiveContaoller()
-
 @end
 
 @implementation LiveContaoller
+RecordStatus recordStatus;
 #pragma mark--LiveContaoller 方法
+- (NSInteger)recordStatus{
+    return self.recordStatus;
+}
 - (instancetype)init
 {
     self = [super init];
