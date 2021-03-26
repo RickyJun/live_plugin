@@ -59,16 +59,25 @@ class LivePlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
       "initLiveConfig" -> {
 
         liveController = LiveController(this.activity,this.flutterPluginBinding.textureRegistry.createSurfaceTexture(),this.flutterPluginBinding.applicationContext)
-        rtmpUrl = "rtmp://ossrs.net/" + StatusBarUtils.getRandomAlphaString(3) + '/' + StatusBarUtils.getRandomAlphaDigitString(5)
         streamAVOption = StreamAVOption();
-        streamAVOption.streamUrl = rtmpUrl
+        var args:Map<*,*>? = null
+        if(call.arguments is Map<*, *>){
+          args = call.arguments as Map<*, *>
+        }
+        streamAVOption.streamUrl = args!!["rmptUrl"].toString();
+        streamAVOption.videoFramerate = args!!["fps"] as Int;
+        streamAVOption.videoBitrate = args!!["fps"] as Int;
+        streamAVOption.videoWidth = args!!["videoWidth"] as Int;
+        streamAVOption.videoHeight = args!!["videoHeight"] as Int;
         liveController.init(this.activity,streamAVOption)
         liveController.addStreamStateListener(resConnectionListener)
         liveController.javaClass.methods.forEach { method -> methods[method.name]=method }
       }
-      //设置视频滤镜
       "takeScreenShot" -> {
         liveController.takeScreenShot(result)
+      }
+      "close" -> {
+        liveController.destroy()
       }
       else -> {
         if(methods.containsKey(call.method)){

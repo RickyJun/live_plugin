@@ -14,6 +14,7 @@
 #import "Constants.h"
 
 @interface LiveContaoller : NSObject<FlutterTexture,GPUImageInput,PixelBufferDelegate>
+
 //最新帧可用回调
 @property(nonatomic, copy) void (^onFrameAvailable)(void);
 //最新一帧数据
@@ -29,6 +30,9 @@
 
 
 @property(assign, nonatomic) int64_t textureId;
+- (instancetype)initWithOption:(FlutterMethodChannel*)channel videoSize:(CGSize)videoSize
+fps:(CGFloat)fps
+                       bitrate:(CGFloat)bitrate rmptUrl:(NSString*)rmptUrl;
 
 - (NSInteger)recordStatus;
 //设置/切换滤镜

@@ -172,7 +172,6 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
         return recordStatus.ordinal
     }
 
-
     /**
      * 开始推流,
      */

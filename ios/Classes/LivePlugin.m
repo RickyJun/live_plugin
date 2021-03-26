@@ -30,13 +30,16 @@ LiveContaoller *liveController;
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
     if([call.method isEqualToString:@"initLiveConfig"]){
-        liveController = [[LiveContaoller alloc] init];
+        NSDictionary *args = call.arguments;
+        liveController = [[LiveContaoller alloc] initWithOption:channel videoSize:CGSizeMake([[args objectForKey:@"videoWidth"] floatValue] ,[[args objectForKey:@"videoHeight"] floatValue]) fps:[[args objectForKey:@"fps"] floatValue]  bitrate:[[args objectForKey:@"bitrate"] floatValue]];
         liveController.textureId = [_registrarTextures registerTexture:liveController];
         liveController.onFrameAvailable = ^{
             [self->_registrarTextures textureFrameAvailable:liveController.textureId];
         };
     }else if([call.method isEqual:@"takeScreenShot"]){
         [liveController takeScreenShot:result];
+    }else if([call.method isEqual:@"close"]){
+        liveController = nil;
     }else{
         SEL method = NSSelectorFromString(call.method);
         if(method != nil && [liveController respondsToSelector:method]){

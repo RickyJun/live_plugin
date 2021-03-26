@@ -13,20 +13,27 @@ typedef NS_ENUM(NSInteger,RecordStatus) {
     Pause
 };
 @interface LiveContaoller()
+@property FlutterMethodChannel *channel;
+@property NSString *rmptUrl;
 @end
 
 @implementation LiveContaoller
+
 RecordStatus recordStatus;
 #pragma mark--LiveContaoller 方法
 - (NSInteger)recordStatus{
     return self.recordStatus;
 }
-- (instancetype)init
+- (instancetype)initWithOption:(FlutterMethodChannel*)channel videoSize:(CGSize)videoSize
+fps:(CGFloat)fps
+                       bitrate:(CGFloat)bitrate rmptUrl:(NSString*)rmptUrl
 {
     self = [super init];
     if (self) {
+        self.channel = channel;
+        self.rmptUrl = rmptUrl;
         //初始化session
-        self.rtmpSession = [[VCRtmpSession alloc] initWithVideoSize:VIDEO_SIZE_CIF fps:25 bitrate:BITRATE_CIF];
+        self.rtmpSession = [[VCRtmpSession alloc] initWithVideoSize:videoSize fps:fps bitrate:bitrate];
         [[GPUImageContext sharedFramebufferCache] purgeAllUnassignedFramebuffers];
         //初始化播放器
         self.videoCamera = [[GPUImageVideoCamera alloc] initWithSessionPreset:AVCaptureSessionPreset1280x720 cameraPosition:AVCaptureDevicePositionFront];
@@ -59,11 +66,14 @@ RecordStatus recordStatus;
 }
 #pragma mark--视频基础控制
 - (void)startRecord{
-    [self.rtmpSession startRtmpSession:@"rtmp://192.168.1.104/live/123456"];
-    
-    [self.videoCamera startCameraCapture];
-    
-    [self.movieWriter startRecording];
+    @try {
+        //[self.rtmpSession startRtmpSession:@"rtmp://192.168.1.104/live/123456"];
+        [self.rtmpSession startRtmpSession:self.rmptUrl];
+        [self.videoCamera startCameraCapture];
+        [self.movieWriter startRecording];
+    } @catch (NSException *exception) {
+        [self.channel invokeMethod:@"error" arguments:exception.name];
+    }
 }
 
 //设置/切换滤镜
