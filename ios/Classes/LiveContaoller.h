@@ -14,7 +14,7 @@
 #import "Constants.h"
 
 @interface LiveContaoller : NSObject<FlutterTexture,GPUImageInput,PixelBufferDelegate>
-
+@property(readonly) RecordStatus recordStatus;
 //最新帧可用回调
 @property(nonatomic, copy) void (^onFrameAvailable)(void);
 //最新一帧数据
@@ -39,13 +39,13 @@ fps:(CGFloat)fps
 //设置/切换滤镜
 - (void)setHardVideoFilterByName:(NSString *)type;
 //开始录像
-- (void)startRecord;
+- (int)startRecord;
 //暂停
 - (void)pauseRecord;
 //恢复
 - (void)resumeRecord;
 //终止录像
-- (void)stopRecord;
+- (NSString*)stopRecord;
 //切换摄像头
 - (void)swapCamera;
 //摄像头焦距 [0.0f,1.0f]

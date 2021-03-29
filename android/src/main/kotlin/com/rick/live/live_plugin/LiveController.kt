@@ -189,7 +189,7 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
      */
     private lateinit var mMuxer: MediaMuxerWrapper
 
-    fun startRecord() {
+    fun startRecord():Int {
         resClient.startPreview(surfaceTexture,avOption.videoWidth,avOption.videoHeight)
         startStreaming(this.avOption.streamUrl)
         this.resClient.setNeedResetEglContext(true)
@@ -200,13 +200,13 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
             mMuxer.prepare()
             mMuxer.startRecording()
             recordStatus = RecordStatus.Recording
-                    } catch (e: Exception) {
+            return 0;
+        } catch (e: Exception) {
             recordStatus = RecordStatus.Stop
             e.printStackTrace()
             onError!!.onError(e.javaClass.typeName,e.message.toString())
-
+            return -1;
         }
-
     }
     fun pauseRecord(){
         if(recordStatus == RecordStatus.Recording){
@@ -246,6 +246,8 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
     fun setZoomByPercent(targetPercent: Float) {
         if (this.resClient != null) {
             this.resClient.setZoomByPercent(targetPercent)
+            this.resClient.videoClient
+
         }
     }
 
@@ -295,10 +297,12 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
      * isEnablePreviewMirror  是否开启预览镜像
      *  isEnableStreamMirror   是否开启推流镜像
      */
-    fun setMirror(isEnableMirror: Boolean) {
+    fun setMirror(isEnableMirror: Boolean):Int {
         if (this.resClient != null) {
             this.resClient.setMirror(isEnableMirror, isEnableMirror, isEnableMirror)
+            return 0;
         }
+        return -1;
     }
 
 

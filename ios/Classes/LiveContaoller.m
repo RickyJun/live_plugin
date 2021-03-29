@@ -8,22 +8,20 @@
 #import "LiveContaoller.h"
 #import <libkern/OSAtomic.h>
 typedef NS_ENUM(NSInteger,RecordStatus) {
-    Stop,
-    Recording,
-    Pause
+    RecordStatusStop,
+    RecordStatusRecording,
+    RecordStatusPause
 };
 @interface LiveContaoller()
-@property FlutterMethodChannel *channel;
+@property NSString *pathToMovie;
 @property NSString *rmptUrl;
+
 @end
 
 @implementation LiveContaoller
 
-RecordStatus recordStatus;
 #pragma mark--LiveContaoller 方法
-- (NSInteger)recordStatus{
-    return self.recordStatus;
-}
+
 - (instancetype)initWithOption:(CGSize)videoSize
 fps:(CGFloat)fps
                        bitrate:(CGFloat)bitrate rmptUrl:(NSString*)rmptUrl
@@ -46,9 +44,9 @@ fps:(CGFloat)fps
         previewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
         previewLayer.frame = [UIScreen mainScreen].bounds;
         //初始化编码器
-        NSString *pathToMovie = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/Movie.m4v"];
-        unlink([pathToMovie UTF8String]); // If a file already exists, AVAssetWriter won't let you record new frames, so delete the old movie
-        NSURL *movieURL = [NSURL fileURLWithPath:pathToMovie];
+        _pathToMovie = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/Movie.m4v"];
+        unlink([_pathToMovie UTF8String]); // If a file already exists, AVAssetWriter won't let you record new frames, so delete the old movie
+        NSURL *movieURL = [NSURL fileURLWithPath:_pathToMovie];
         self.movieWriter = [[GPUImageMovieWriterEx alloc] initWithMovieURL:movieURL size:CGSizeMake(360.0, 640.0)];
         self.movieWriter.encodingLiveVideo = YES;
         self.movieWriter.pixelBufferdelegate = self;
@@ -64,14 +62,17 @@ fps:(CGFloat)fps
     }
 }
 #pragma mark--视频基础控制
-- (void)startRecord{
+- (int)startRecord{
     @try {
         //[self.rtmpSession startRtmpSession:@"rtmp://192.168.1.104/live/123456"];
         [self.rtmpSession startRtmpSession:self.rmptUrl];
         [self.videoCamera startCameraCapture];
         [self.movieWriter startRecording];
+        _recordStatus = RecordStatusRecording;
+        return 0;
     } @catch (NSException *exception) {
-        [self.channel invokeMethod:@"error" arguments:exception.name];
+        _onError(exception.name,exception.reason);
+        return -1;
     }
 }
 
@@ -93,21 +94,25 @@ fps:(CGFloat)fps
         [_videoCamera addTarget:_filter];
     }
 }
-- (void)stopRecord{
+- (NSString*)stopRecord{
     [self.rtmpSession endRtmpSession];
     [self.videoCamera stopCameraCapture];
     [self.movieWriter cancelRecording];
     [self.videoCamera removeTarget:self];
     [self.videoCamera removeTarget:self.movieWriter];
+    _recordStatus = RecordStatusStop;
+    return _pathToMovie;
 }
 - (void)swapCamera{
     [self.videoCamera rotateCamera];
 }
 - (void)pauseRecord{
     [self.videoCamera pauseCameraCapture];
+    _recordStatus = RecordStatusPause;
 }
 - (void)resumeRecord{
     [self.videoCamera resumeCameraCapture];
+    _recordStatus = RecordStatusRecording;
 }
 #pragma mark--视频其他控制
 //摄像头焦距 [0.0f,1.0f]

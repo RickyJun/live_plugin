@@ -1,8 +1,12 @@
 class Bitrates {
-  static const String Bitrate352x288 = "352x288";
-  static const String Bitrate960x540 = "960x540";
+  final String value;
+  const Bitrates(this.value);
+  static const Bitrates Bitrate352x288 = Bitrates("352x288");
+  static const Bitrates Bitrate960x540 = Bitrates("960x540");
 }
 
 class Filters {
-  static const String GPUImageBeautyFilter = "GPUImageBeautyFilter";
+  final String value;
+  const Filters(this.value);
+  static const Filters GPUImageBeautyFilter = Filters("GPUImageBeautyFilter");
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'Constants.dart';
 import 'Utils.dart';
 
 enum RecordStatus { Stop, Recording, Pause }
@@ -14,6 +15,7 @@ class LiveController {
   int videoWidth;
   int videoHeight;
   bool isInitialized = false;
+  bool isEnableMirror = false;
   int _textureId;
   LiveController(this._channel, {this.rmptServer});
   String _generateRmptUrl() {
@@ -65,7 +67,46 @@ class LiveController {
     }
   }
 
-  void startRecord() {}
+  void startRecord() async {
+    int res = await _channel.invokeMethod("recordStatus");
+    if (res != null && res != 0) {
+      throw FlutterError("startRecord fail with code -1,check the native code");
+    }
+  }
+
+  void pauseRecord() async {
+    await _channel.invokeMethod("pauseRecord");
+  }
+
+  void resumeRecord() async {
+    await _channel.invokeMethod("resumeRecord");
+  }
+
+  Future<String> stopRecord() async {
+    String path = await _channel.invokeMethod("stopRecord");
+    return path;
+  }
+
+  void swapCamera() {
+    _channel.invokeMethod("swapCamera");
+  }
+
+  void setZoomByPercent(double targetPercent) {
+    assert(targetPercent > 0.0 && targetPercent < 1.0);
+    _channel.invokeMethod("setZoomByPercent", targetPercent);
+  }
+
+  void toggleFlashLight() {
+    _channel.invokeMethod("toggleFlashLight");
+  }
+
+  void reSetVideoFPS(int fps) {
+    _channel.invokeMethod("reSetVideoFPS", fps);
+  }
+
+  void reSetVideoBitrate(Bitrates type) {
+    _channel.invokeMethod("reSetVideoBitrate", type.value);
+  }
 
   //录像状态
   Future<int> recordStatus() async {
@@ -76,6 +117,17 @@ class LiveController {
   Future<String> takeScreenShot() async {
     String imageFilePath = await _channel.invokeMethod("takeScreenShot");
     return imageFilePath;
+  }
+
+  void setMirror(bool isEnableMirror) async {
+    int res = await _channel.invokeMethod("setMirror", isEnableMirror);
+    if (res != null && res == 0) {
+      this.isEnableMirror = isEnableMirror;
+    }
+  }
+
+  void setHardVideoFilterByName(Filters filter) {
+    _channel.invokeMethod("setHardVideoFilterByName", filter.value);
   }
 
   //关闭

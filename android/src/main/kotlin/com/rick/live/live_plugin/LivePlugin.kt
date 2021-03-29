@@ -96,7 +96,12 @@ class LivePlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
       }
       else -> {
         if(methods.containsKey(call.method)){
-          methods[call.method]!!.invoke(liveController,call.arguments)
+          var res:Any? = methods[call.method]!!.invoke(liveController,call.arguments)
+          if(res != null){
+            result.success(res);
+          }else{
+            result.success("return null");
+          }
         }
         result.notImplemented()
       }
