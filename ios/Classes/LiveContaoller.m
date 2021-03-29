@@ -24,13 +24,12 @@ RecordStatus recordStatus;
 - (NSInteger)recordStatus{
     return self.recordStatus;
 }
-- (instancetype)initWithOption:(FlutterMethodChannel*)channel videoSize:(CGSize)videoSize
+- (instancetype)initWithOption:(CGSize)videoSize
 fps:(CGFloat)fps
                        bitrate:(CGFloat)bitrate rmptUrl:(NSString*)rmptUrl
 {
     self = [super init];
     if (self) {
-        self.channel = channel;
         self.rmptUrl = rmptUrl;
         //初始化session
         self.rtmpSession = [[VCRtmpSession alloc] initWithVideoSize:videoSize fps:fps bitrate:bitrate];

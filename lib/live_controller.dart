@@ -1,6 +1,9 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'Utils.dart';
+
+enum RecordStatus { Stop, Recording, Pause }
 
 class LiveController {
   final MethodChannel _channel;
@@ -10,18 +13,21 @@ class LiveController {
   int bitrate;
   int videoWidth;
   int videoHeight;
+  bool isInitialized = false;
+  int _textureId;
   LiveController(this._channel, {this.rmptServer});
   String _generateRmptUrl() {
     return "$rmptServer${Utils.getRandomAlphaString(3)}/${Utils.getRandomAlphaDigitString(5)}";
   }
 
+  //初始化
   initLiveConfig(
       {String rmptServer,
       String rmptUrl,
       int fps,
       int bitrate,
       int videoWidth,
-      int videoHeight}) {
+      int videoHeight}) async {
     assert(!(rmptServer == null && rmptUrl == null));
     assert(videoHeight != null && videoWidth != null);
     this.rmptServer = rmptServer;
@@ -33,24 +39,46 @@ class LiveController {
     rmptUrl ??= _generateRmptUrl();
     this.fps ??= 25;
     this.bitrate ??= 960 * 540;
-    _channel.invokeMethod("initLiveConfig", {
+    Map<String, dynamic> res = await _channel.invokeMethod("initLiveConfig", {
       "rmptUrl": rmptUrl,
       "fps": fps,
       "bitrate": bitrate,
       "videoWidth": videoWidth,
       "videoHeight": videoHeight
     });
+    if (res != null) {
+      _textureId = res["_textureId"];
+      isInitialized = true;
+    }
   }
 
+  get textureId {
+    if (isInitialized) {
+      if (_textureId == null) {
+        throw FlutterError(
+            "_textureId is empty,please check the step 'init',maybe throw some error");
+      } else {
+        return _textureId;
+      }
+    } else {
+      throw FlutterError("liveController had no init");
+    }
+  }
+
+  void startRecord() {}
+
+  //录像状态
   Future<int> recordStatus() async {
     return await _channel.invokeMethod("recordStatus");
   }
 
+  //截图
   Future<String> takeScreenShot() async {
     String imageFilePath = await _channel.invokeMethod("takeScreenShot");
     return imageFilePath;
   }
 
+  //关闭
   void close() {
     _channel.invokeMethod("close");
   }

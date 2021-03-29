@@ -12,6 +12,8 @@ import io.flutter.plugin.common.MethodChannel.Result
 import me.lake.librestreaming.core.listener.RESConnectionListener
 import me.lake.librestreaming.ws.StreamAVOption
 import java.lang.reflect.Method
+import java.util.*
+import kotlin.collections.HashMap
 
 /** LivePlugin */
 class LivePlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
@@ -72,6 +74,19 @@ class LivePlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
         liveController.init(this.activity,streamAVOption)
         liveController.addStreamStateListener(resConnectionListener)
         liveController.javaClass.methods.forEach { method -> methods[method.name]=method }
+        liveController.onError = object : ErrorListener{
+          override fun onError(errorType:String, dec:String){
+            var errorMsg:HashMap<String,Any> = HashMap();
+            errorMsg["errorType"] = errorType;
+            errorMsg["dec"] = dec;
+            channel.invokeMethod("error",errorMsg)
+          }
+        }
+        if(liveController.textureId != null){
+          var res:MutableMap<String,Any?> = HashMap<String,Any?>()
+          res["textureId"] = liveController.textureId;
+          result.success(res)
+        }
       }
       "takeScreenShot" -> {
         liveController.takeScreenShot(result)

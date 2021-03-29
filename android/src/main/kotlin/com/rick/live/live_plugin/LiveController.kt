@@ -3,12 +3,10 @@ package com.rick.live.live_plugin
 import android.app.Activity
 import android.content.Context
 import android.graphics.SurfaceTexture
-import android.view.Surface
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.view.TextureRegistry
 import me.lake.librestreaming.client.RESClient
 import me.lake.librestreaming.core.listener.RESConnectionListener
-import me.lake.librestreaming.core.listener.RESScreenShotListener
 import me.lake.librestreaming.core.listener.RESVideoChangeListener
 import me.lake.librestreaming.encoder.MediaAudioEncoder
 import me.lake.librestreaming.encoder.MediaEncoder
@@ -19,17 +17,17 @@ import me.lake.librestreaming.model.RESConfig
 import me.lake.librestreaming.tools.CameraUtil
 import me.lake.librestreaming.ws.StreamAVOption
 import me.lake.librestreaming.ws.StreamConfig
-import me.lake.librestreaming.ws.StreamLiveCameraView
 import me.lake.librestreaming.ws.filter.audiofilter.SetVolumeAudioFilter
-import java.io.IOException
 
 enum class RecordStatus{
     Stop,
     Recording,
     Pause
 }
+interface ErrorListener {
+    fun onError(errorType:String,dec:String)
+}
 class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.SurfaceTextureEntry, context: Context?) {
-
 
     private lateinit var resClient: RESClient
     private var resConfig: RESConfig? = null
@@ -39,6 +37,7 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
     private var recordStatus:RecordStatus = RecordStatus.Stop
     private val quality_value_min = 400 * 1024
     private val quality_value_max = 700 * 1024
+    var onError:ErrorListener? = null
     /**
      * 根据AVOption初始化&打开预览
      * @param avOption
@@ -58,7 +57,6 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
         var isSucceed = this.resClient.prepare(this.resConfig)
         //初始化texture到resclient
         surfaceTexture = flutterTexture.surfaceTexture()
-
         addListenerAndFilter()
     }
 
@@ -202,9 +200,11 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
             mMuxer.prepare()
             mMuxer.startRecording()
             recordStatus = RecordStatus.Recording
-                    } catch (e: IOException) {
+                    } catch (e: Exception) {
             recordStatus = RecordStatus.Stop
             e.printStackTrace()
+            onError!!.onError(e.javaClass.typeName,e.message.toString())
+
         }
 
     }

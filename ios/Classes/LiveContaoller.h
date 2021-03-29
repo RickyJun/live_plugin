@@ -30,7 +30,8 @@
 
 
 @property(assign, nonatomic) int64_t textureId;
-- (instancetype)initWithOption:(FlutterMethodChannel*)channel videoSize:(CGSize)videoSize
+@property(assign, strong) void(^onError)(NSString *errorType,NSString *dec);
+- (instancetype)initWithOption:(CGSize)videoSize
 fps:(CGFloat)fps
                        bitrate:(CGFloat)bitrate rmptUrl:(NSString*)rmptUrl;
 
