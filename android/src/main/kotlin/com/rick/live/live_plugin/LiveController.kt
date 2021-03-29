@@ -37,42 +37,56 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
     private var recordStatus:RecordStatus = RecordStatus.Stop
     private val quality_value_min = 400 * 1024
     private val quality_value_max = 700 * 1024
-    var onError:ErrorListener? = null
+    lateinit var errorListener:ErrorListener
+    fun getErrorMsg(e:Exception,method:String){
+        e.printStackTrace();
+        errorListener.onError("$method err$e","msg:${e.message.toString()},cause:${e.cause.toString()}")
+    }
     /**
      * 根据AVOption初始化&打开预览
      * @param avOption
      */
     fun init(context: Context?, avOption: StreamAVOption?){
-        requireNotNull(avOption) { "AVOption is null." }
-        this.avOption = avOption
-        //初始化尺寸
-        compatibleSize(avOption)
-        //初始化resclient
-        this.resClient = this.getRESClient()!!
-        //设置res的上下文
-        setContext(context)
-        //生产resConfig
-        this.resConfig = StreamConfig.build(context, avOption)
-        //根据resConfig准备resclient
-        var isSucceed = this.resClient.prepare(this.resConfig)
-        //初始化texture到resclient
-        surfaceTexture = flutterTexture.surfaceTexture()
-        addListenerAndFilter()
+        try {
+            requireNotNull(avOption) { "AVOption is null." }
+            this.avOption = avOption
+            //初始化尺寸
+            compatibleSize(avOption)
+            //初始化resclient
+            this.resClient = this.getRESClient()!!
+            //设置res的上下文
+            setContext(context)
+            //生产resConfig
+            this.resConfig = StreamConfig.build(context, avOption)
+            //根据resConfig准备resclient
+            var isSucceed = this.resClient.prepare(this.resConfig)
+            //初始化texture到resclient
+            surfaceTexture = flutterTexture.surfaceTexture()
+            addListenerAndFilter()
+        }catch (e:Exception){
+            getErrorMsg(e,"init")
+        }
+
     }
 
     /**
      * destroy
      */
     fun destroy() {
-        this.resClient.setConnectionListener(null)
-        this.resClient.setVideoChangeListener(null)
-        if (this.resClient.isStreaming) {
-            this.resClient.stopStreaming()
+        try {
+            this.resClient.setConnectionListener(null)
+            this.resClient.setVideoChangeListener(null)
+            if (this.resClient.isStreaming) {
+                this.resClient.stopStreaming()
+            }
+            if (recordStatus == RecordStatus.Recording) {
+                stopRecord()
+            }
+            this.resClient.destroy()
+        }catch (e:Exception){
+            getErrorMsg(e,"destroy")
         }
-        if (recordStatus == RecordStatus.Recording) {
-            stopRecord()
-        }
-        this.resClient.destroy()
+
     }
 
     /**
@@ -80,9 +94,14 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
      * @param listener
      */
     fun addStreamStateListener(listener: RESConnectionListener?) {
-        if (listener != null && !outerStreamStateListeners.contains(listener)) {
-            outerStreamStateListeners.add(listener)
+        try {
+            if (listener != null && !outerStreamStateListeners.contains(listener)) {
+                outerStreamStateListeners.add(listener)
+            }
+        }catch (e:Exception){
+            getErrorMsg(e,"addStreamStateListener")
         }
+
     }
 
     //获取textureId
@@ -174,14 +193,24 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
      * 开始推流,
      */
     fun startStreaming(rtmpUrl: String?) {
-        this.resClient.startStreaming(rtmpUrl)
+        try {
+            this.resClient.startStreaming(rtmpUrl)
+        }catch (e:Exception){
+            getErrorMsg(e,"startStreaming")
+        }
+
     }
 
     /**
      * 停止推流,关闭推流
      */
     fun stopStreaming() {
-        this.resClient.stopStreaming()
+        try {
+            this.resClient.stopStreaming()
+        }catch (e:Exception){
+            getErrorMsg(e,"stopStreaming")
+        }
+
     }
 
     /**
@@ -203,34 +232,49 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
             return 0;
         } catch (e: Exception) {
             recordStatus = RecordStatus.Stop
-            e.printStackTrace()
-            onError!!.onError(e.javaClass.typeName,e.message.toString())
+            getErrorMsg(e,"startRecord")
             return -1;
         }
     }
     fun pauseRecord(){
-        if(recordStatus == RecordStatus.Recording){
-            resClient.stopPreview(false)
-            recordStatus = RecordStatus.Pause
+        try {
+            if(recordStatus == RecordStatus.Recording){
+                resClient.stopPreview(false)
+                recordStatus = RecordStatus.Pause
+            }
+        }catch (e:Exception){
+            getErrorMsg(e,"pauseRecord")
         }
+
 
     }
     fun resumeRecord(){
-        if(recordStatus == RecordStatus.Pause || recordStatus == RecordStatus.Stop){
-            resClient.startPreview(surfaceTexture,avOption.videoWidth,avOption.videoHeight)
-            recordStatus = RecordStatus.Recording
+        try {
+            if(recordStatus == RecordStatus.Pause || recordStatus == RecordStatus.Stop){
+                resClient.startPreview(surfaceTexture,avOption.videoWidth,avOption.videoHeight)
+                recordStatus = RecordStatus.Recording
+            }
+        }catch (e:Exception){
+            getErrorMsg(e,"resumeRecord")
         }
+
     }
     /**
      * 停止录制
      */
     fun stopRecord(): String? {
-        recordStatus = RecordStatus.Stop
-        val path: String = mMuxer.getFilePath()
-        mMuxer.stopRecording()
-        stopStreaming()
-        System.gc()
-        return path
+        try {
+            recordStatus = RecordStatus.Stop
+            val path: String = mMuxer.getFilePath()
+            mMuxer.stopRecording()
+            stopStreaming()
+            System.gc()
+            return path
+        }catch (e:Exception){
+            getErrorMsg(e,"resumeRecord")
+            return null;
+        }
+
     }
 
     /**
@@ -246,8 +290,6 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
     fun setZoomByPercent(targetPercent: Float) {
         if (this.resClient != null) {
             this.resClient.setZoomByPercent(targetPercent)
-            this.resClient.videoClient
-
         }
     }
 
@@ -310,10 +352,15 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
      * 设置滤镜
      */
     fun setHardVideoFilterByName(type: String) {
-        if (this.resClient != null) {
-            val filter:BaseHardVideoFilter = Filters.getFilterByType(type)
-            this.resClient.setHardVideoFilter(filter)
+        try {
+            if (this.resClient != null) {
+                val filter:BaseHardVideoFilter = Filters.getFilterByType(type)
+                this.resClient.setHardVideoFilter(filter)
+            }
+        }catch (e:Exception){
+            getErrorMsg(e,"setHardVideoFilterByName")
         }
+
     }
 
     /**

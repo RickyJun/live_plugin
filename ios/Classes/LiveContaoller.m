@@ -15,43 +15,55 @@ typedef NS_ENUM(NSInteger,RecordStatus) {
 @interface LiveContaoller()
 @property NSString *pathToMovie;
 @property NSString *rmptUrl;
-
+//[self getErrorMsg:exception method:@"startRecord"];
+- (void)getErrorMsg:(NSException*)e method:(NSString*)method;
 @end
 
 @implementation LiveContaoller
 
 #pragma mark--LiveContaoller 方法
 
+- (void)getErrorMsg:(NSException*)e method:(NSString*)method{
+    _onError([NSString  stringWithFormat:@"%@ err %@",method,e.name],[NSString stringWithFormat:@"msg:%@ cause:%@",e.reason,e.userInfo]);
+}
 - (instancetype)initWithOption:(CGSize)videoSize
 fps:(CGFloat)fps
                        bitrate:(CGFloat)bitrate rmptUrl:(NSString*)rmptUrl
 {
     self = [super init];
     if (self) {
-        self.rmptUrl = rmptUrl;
-        //初始化session
-        self.rtmpSession = [[VCRtmpSession alloc] initWithVideoSize:videoSize fps:fps bitrate:bitrate];
-        [[GPUImageContext sharedFramebufferCache] purgeAllUnassignedFramebuffers];
-        //初始化播放器
-        self.videoCamera = [[GPUImageVideoCamera alloc] initWithSessionPreset:AVCaptureSessionPreset1280x720 cameraPosition:AVCaptureDevicePositionFront];
-        self.videoCamera.outputImageOrientation = UIInterfaceOrientationPortrait;
-        self.videoCamera.horizontallyMirrorFrontFacingCamera = NO;
-        self.videoCamera.horizontallyMirrorRearFacingCamera = NO;
-        //设置预览的屏幕尺寸
-        AVCaptureSession* session = self.videoCamera.captureSession;
-        AVCaptureVideoPreviewLayer* previewLayer;
-        previewLayer = [AVCaptureVideoPreviewLayer layerWithSession:session];
-        previewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
-        previewLayer.frame = [UIScreen mainScreen].bounds;
-        //初始化编码器
-        _pathToMovie = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/Movie.m4v"];
-        unlink([_pathToMovie UTF8String]); // If a file already exists, AVAssetWriter won't let you record new frames, so delete the old movie
-        NSURL *movieURL = [NSURL fileURLWithPath:_pathToMovie];
-        self.movieWriter = [[GPUImageMovieWriterEx alloc] initWithMovieURL:movieURL size:CGSizeMake(360.0, 640.0)];
-        self.movieWriter.encodingLiveVideo = YES;
-        self.movieWriter.pixelBufferdelegate = self;
-        [self.videoCamera addTarget:self.movieWriter];
-        [self.videoCamera addTarget:self];
+        @try {
+            self.rmptUrl = rmptUrl;
+            NSString *fileName = [rmptUrl substringFromIndex:[rmptUrl indexOfAccessibilityElement:@"/"]];
+            //初始化session
+            self.rtmpSession = [[VCRtmpSession alloc] initWithVideoSize:videoSize fps:fps bitrate:bitrate];
+            [[GPUImageContext sharedFramebufferCache] purgeAllUnassignedFramebuffers];
+            //初始化播放器
+            self.videoCamera = [[GPUImageVideoCamera alloc] initWithSessionPreset:AVCaptureSessionPreset1280x720 cameraPosition:AVCaptureDevicePositionFront];
+            self.videoCamera.outputImageOrientation = UIInterfaceOrientationPortrait;
+            self.videoCamera.horizontallyMirrorFrontFacingCamera = NO;
+            self.videoCamera.horizontallyMirrorRearFacingCamera = NO;
+            //设置预览的屏幕尺寸
+            AVCaptureSession* session = self.videoCamera.captureSession;
+            AVCaptureVideoPreviewLayer* previewLayer;
+            previewLayer = [AVCaptureVideoPreviewLayer layerWithSession:session];
+            previewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
+            previewLayer.frame = [UIScreen mainScreen].bounds;
+            //初始化编码器
+            _pathToMovie = [NSHomeDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"Documents%@movie.m4v",fileName]];
+            unlink([_pathToMovie UTF8String]); // If a file already exists, AVAssetWriter won't let you record new frames, so delete the old movie
+            NSURL *movieURL = [NSURL fileURLWithPath:_pathToMovie];
+            self.movieWriter = [[GPUImageMovieWriterEx alloc] initWithMovieURL:movieURL size:CGSizeMake(360.0, 640.0)];
+            self.movieWriter.encodingLiveVideo = YES;
+            self.movieWriter.pixelBufferdelegate = self;
+            [self.videoCamera addTarget:self.movieWriter];
+            [self.videoCamera addTarget:self];
+        } @catch (NSException *exception) {
+            [self getErrorMsg:exception method:@"initWithOption"];
+        } @finally {
+            
+        }
+        
     }
     return self;
 }
@@ -71,7 +83,7 @@ fps:(CGFloat)fps
         _recordStatus = RecordStatusRecording;
         return 0;
     } @catch (NSException *exception) {
-        _onError(exception.name,exception.reason);
+        [self getErrorMsg:exception method:@"startRecord"];
         return -1;
     }
 }
@@ -81,27 +93,42 @@ fps:(CGFloat)fps
     if(type == nil){
         return;
     }
-    if([[_videoCamera targets] containsObject:self]){
-        [_videoCamera removeTarget:self];
+    @try {
+        if([[_videoCamera targets] containsObject:self]){
+            [_videoCamera removeTarget:self];
+        }
+        if(_filter != nil){
+            [_filter removeAllTargets];
+            [_videoCamera removeTarget:_filter];
+        }
+        _filter = [Filters getFilterByType:type];
+        if(_filter != nil){
+            [_filter addTarget:self];
+            [_videoCamera addTarget:_filter];
+        }
+    } @catch (NSException *exception) {
+        [self getErrorMsg:exception method:@"setHardVideoFilterByName"];
+    } @finally {
+        
     }
-    if(_filter != nil){
-        [_filter removeAllTargets];
-        [_videoCamera removeTarget:_filter];
-    }
-    _filter = [Filters getFilterByType:type];
-    if(_filter != nil){
-        [_filter addTarget:self];
-        [_videoCamera addTarget:_filter];
-    }
+    
 }
 - (NSString*)stopRecord{
-    [self.rtmpSession endRtmpSession];
-    [self.videoCamera stopCameraCapture];
-    [self.movieWriter cancelRecording];
-    [self.videoCamera removeTarget:self];
-    [self.videoCamera removeTarget:self.movieWriter];
-    _recordStatus = RecordStatusStop;
-    return _pathToMovie;
+    @try {
+        [self.rtmpSession endRtmpSession];
+        [self.videoCamera stopCameraCapture];
+        [self.movieWriter cancelRecording];
+        [self.videoCamera removeTarget:self];
+        [self.videoCamera removeTarget:self.movieWriter];
+        _recordStatus = RecordStatusStop;
+        return _pathToMovie;
+    } @catch (NSException *exception) {
+        [self getErrorMsg:exception method:@"stopRecord"];
+        return nil;
+    } @finally {
+        
+    }
+    
 }
 - (void)swapCamera{
     [self.videoCamera rotateCamera];
