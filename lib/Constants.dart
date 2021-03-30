@@ -1,8 +1,9 @@
 class Bitrates {
   final String value;
-  const Bitrates(this.value);
-  static const Bitrates Bitrate352x288 = Bitrates("352x288");
-  static const Bitrates Bitrate960x540 = Bitrates("960x540");
+  final int intValue;
+  const Bitrates(this.value, this.intValue);
+  static const Bitrates Bitrate352x288 = Bitrates("352x288", 352 * 288);
+  static const Bitrates Bitrate960x540 = Bitrates("960x540", 960 * 540);
 }
 
 class Filters {

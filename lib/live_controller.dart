@@ -17,19 +17,18 @@ class LiveController {
   bool isInitialized = false;
   bool isEnableMirror = false;
   int _textureId;
-  LiveController(this._channel, {this.rmptServer});
+  LiveController(this._channel,
+      {this.rmptServer,
+      this.fps,
+      this.bitrate,
+      this.videoWidth,
+      this.videoHeight});
   String _generateRmptUrl() {
     return "$rmptServer${Utils.getRandomAlphaString(3)}/${Utils.getRandomAlphaDigitString(5)}";
   }
 
-  //初始化
-  initLiveConfig(
-      {String rmptServer,
-      String rmptUrl,
-      int fps,
-      int bitrate,
-      int videoWidth,
-      int videoHeight}) async {
+  //如果
+  initLiveConfig({String rmptUrl}) async {
     assert(!(rmptServer == null && rmptUrl == null));
     assert(videoHeight != null && videoWidth != null);
     this.rmptServer = rmptServer;
@@ -126,7 +125,7 @@ class LiveController {
     }
   }
 
-  void setHardVideoFilterByName(Filters filter) {
+  void setHardVideoFilter(Filters filter) {
     _channel.invokeMethod("setHardVideoFilterByName", filter.value);
   }
 
