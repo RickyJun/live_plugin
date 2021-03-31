@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
+import 'package:permission_handler/permission_handler.dart';
 import 'Constants.dart';
 import 'Utils.dart';
 
@@ -17,6 +17,7 @@ class LiveController {
   bool isInitialized = false;
   bool isEnableMirror = false;
   int _textureId;
+  double aspectRatio;
   LiveController(this._channel,
       {this.rmptServer,
       this.fps,
@@ -28,7 +29,15 @@ class LiveController {
   }
 
   //如果
-  initLiveConfig({String rmptUrl}) async {
+  Future<int> initLiveConfig({String rmptUrl}) async {
+    PermissionStatus status = await Permission.camera.request();
+    if (status != PermissionStatus.granted) {
+      return -2;
+    }
+    status = await Permission.storage.request();
+    if (status != PermissionStatus.granted) {
+      return -2;
+    }
     assert(!(rmptServer == null && rmptUrl == null));
     assert(videoHeight != null && videoWidth != null);
     this.rmptServer = rmptServer;
@@ -37,20 +46,23 @@ class LiveController {
     this.bitrate = bitrate;
     this.videoWidth = videoWidth;
     this.videoHeight = videoHeight;
-    rmptUrl ??= _generateRmptUrl();
+    this.rmptUrl ??= _generateRmptUrl();
     this.fps ??= 25;
     this.bitrate ??= 960 * 540;
-    Map<String, dynamic> res = await _channel.invokeMethod("initLiveConfig", {
-      "rmptUrl": rmptUrl,
-      "fps": fps,
-      "bitrate": bitrate,
-      "videoWidth": videoWidth,
-      "videoHeight": videoHeight
+    Map<dynamic, dynamic> res = await _channel.invokeMethod("initLiveConfig", {
+      "rmptUrl": this.rmptUrl,
+      "fps": this.fps,
+      "bitrate": this.bitrate,
+      "videoWidth": this.videoWidth,
+      "videoHeight": this.videoHeight
     });
     if (res != null) {
-      _textureId = res["_textureId"];
+      _textureId = res["textureId"];
+      aspectRatio = res["aspectRatio"];
       isInitialized = true;
+      Clipboard.setData(ClipboardData(text: this.rmptUrl));
     }
+    return 0;
   }
 
   get textureId {
@@ -67,9 +79,10 @@ class LiveController {
   }
 
   void startRecord() async {
-    int res = await _channel.invokeMethod("recordStatus");
+    int res = await _channel.invokeMethod("startRecord");
     if (res != null && res != 0) {
-      throw FlutterError("startRecord fail with code -1,check the native code");
+      throw FlutterError(
+          "startRecord fail with code $res,check the native code");
     }
   }
 

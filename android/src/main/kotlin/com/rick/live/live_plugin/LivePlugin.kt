@@ -1,10 +1,7 @@
 package com.rick.live.live_plugin
-
-import android.app.Activity
+import android.content.Context
 import androidx.annotation.NonNull
 import io.flutter.embedding.engine.plugins.FlutterPlugin
-import io.flutter.embedding.engine.plugins.activity.ActivityAware
-import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
@@ -12,21 +9,19 @@ import io.flutter.plugin.common.MethodChannel.Result
 import me.lake.librestreaming.core.listener.RESConnectionListener
 import me.lake.librestreaming.ws.StreamAVOption
 import java.lang.reflect.Method
-import java.util.*
 import kotlin.collections.HashMap
 
 /** LivePlugin */
-class LivePlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
+class LivePlugin: FlutterPlugin, MethodCallHandler {
   /// The MethodChannel that will the communication between Flutter and native Android
   ///
   /// This local reference serves to register the plugin with the Flutter Engine and unregister it
   /// when the Flutter Engine is detached from the Activity
   private lateinit var channel: MethodChannel
-  private lateinit var activity: Activity
+  private lateinit var context: Context
   //推流controller
   private lateinit var liveController: LiveController
-  //推流地址
-  private lateinit var rtmpUrl: String
+
   //推流配置
   private lateinit var streamAVOption: StreamAVOption
   private lateinit var flutterPluginBinding: FlutterPlugin.FlutterPluginBinding
@@ -34,9 +29,15 @@ class LivePlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
 
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-    this.flutterPluginBinding = flutterPluginBinding
-    channel = MethodChannel(flutterPluginBinding.binaryMessenger, "live_rtmp")
-    channel.setMethodCallHandler(this)
+    try {
+      this.flutterPluginBinding = flutterPluginBinding
+      channel = MethodChannel(flutterPluginBinding.binaryMessenger, "live_rtmp")
+      channel.setMethodCallHandler(this)
+      this.context = flutterPluginBinding.applicationContext;
+    }catch (e:Exception){
+      e.printStackTrace()
+    }
+
     
   }
   private var resConnectionListener: RESConnectionListener = object : RESConnectionListener {
@@ -60,21 +61,26 @@ class LivePlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
       //初始化推流控制器
       "initLiveConfig" -> {
 
-        liveController = LiveController(this.activity,this.flutterPluginBinding.textureRegistry.createSurfaceTexture(),this.flutterPluginBinding.applicationContext)
+        liveController = LiveController(this.flutterPluginBinding.textureRegistry.createSurfaceTexture(),this.flutterPluginBinding.applicationContext)
         streamAVOption = StreamAVOption();
         var args:Map<*,*>? = null
         if(call.arguments is Map<*, *>){
           args = call.arguments as Map<*, *>
         }
         streamAVOption.streamUrl = args!!["rmptUrl"].toString();
-        streamAVOption.videoFramerate = args!!["fps"] as Int;
-        streamAVOption.videoBitrate = args!!["fps"] as Int;
+
+//        streamAVOption.videoFramerate = args!!["fps"] as Int;
+//        streamAVOption.videoBitrate = args!!["bitrate"] as Int;
         streamAVOption.videoWidth = args!!["videoWidth"] as Int;
         streamAVOption.videoHeight = args!!["videoHeight"] as Int;
-        liveController.init(this.activity,streamAVOption)
+        streamAVOption.previewWidth = args!!["videoWidth"] as Int;
+        streamAVOption.previewHeight = args!!["videoHeight"] as Int;
+        StreamAVOption.recordVideoWidth = args!!["videoWidth"] as Int;
+        StreamAVOption.recordVideoHeight = args!!["videoHeight"] as Int;
+        liveController.init(this.context,streamAVOption)
         liveController.addStreamStateListener(resConnectionListener)
         liveController.javaClass.methods.forEach { method -> methods[method.name]=method }
-        liveController.onError = object : ErrorListener{
+        liveController.errorListener = object : ErrorListener{
           override fun onError(errorType:String, dec:String){
             var errorMsg:HashMap<String,Any> = HashMap();
             errorMsg["errorType"] = errorType;
@@ -85,6 +91,7 @@ class LivePlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
         if(liveController.textureId != null){
           var res:MutableMap<String,Any?> = HashMap<String,Any?>()
           res["textureId"] = liveController.textureId;
+          res["aspectRatio"] = liveController.getRESClient()!!.videoSize.width*1.0F/liveController.getRESClient()!!.videoSize.height
           result.success(res)
         }
       }
@@ -96,14 +103,22 @@ class LivePlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
       }
       else -> {
         if(methods.containsKey(call.method)){
-          var res:Any? = methods[call.method]!!.invoke(liveController,call.arguments)
+          var res:Any? = null
+          if(call.arguments == null){
+            res = methods[call.method]!!.invoke(liveController)
+          }else{
+            res = methods[call.method]!!.invoke(liveController,call.arguments)
+          }
+
           if(res != null){
             result.success(res);
           }else{
             result.success("return null");
           }
+        }else{
+          result.notImplemented()
         }
-        result.notImplemented()
+
       }
     }
   }
@@ -112,20 +127,4 @@ class LivePlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
     channel.setMethodCallHandler(null)
   }
 
-  override fun onDetachedFromActivity() {
-    TODO("Not yet implemented")
-  }
-
-  override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
-    this.activity = binding.activity;
-    TODO("Not yet implemented")
-  }
-
-  override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-    TODO("Not yet implemented")
-  }
-
-  override fun onDetachedFromActivityForConfigChanges() {
-    TODO("Not yet implemented")
-  }
 }

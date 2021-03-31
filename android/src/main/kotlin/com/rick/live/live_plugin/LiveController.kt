@@ -27,7 +27,7 @@ enum class RecordStatus{
 interface ErrorListener {
     fun onError(errorType:String,dec:String)
 }
-class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.SurfaceTextureEntry, context: Context?) {
+class LiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, context: Context?) {
 
     private lateinit var resClient: RESClient
     private var resConfig: RESConfig? = null
@@ -219,7 +219,7 @@ class LiveController(activity: Activity?,val flutterTexture: TextureRegistry.Sur
     private lateinit var mMuxer: MediaMuxerWrapper
 
     fun startRecord():Int {
-        resClient.startPreview(surfaceTexture,avOption.videoWidth,avOption.videoHeight)
+        resClient.startPreview(surfaceTexture,avOption.previewWidth,avOption.previewHeight)
         startStreaming(this.avOption.streamUrl)
         this.resClient.setNeedResetEglContext(true)
         try {

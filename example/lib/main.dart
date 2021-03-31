@@ -4,6 +4,8 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:live_plugin/live_plugin.dart';
 
+import 'live_video.dart';
+
 void main() {
   runApp(MyApp());
 }
@@ -50,9 +52,12 @@ class _MyAppState extends State<MyApp> {
             title: const Text('Plugin example app'),
           ),
           body: Container(
-            child: FlatButton(onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (ctx) => ));
-            }, child: Text("去直播")),
+            child: FlatButton(
+                onPressed: () {
+                  Navigator.push(
+                      context, MaterialPageRoute(builder: (ctx) => LivePage()));
+                },
+                child: Text("去直播")),
           )),
     );
   }

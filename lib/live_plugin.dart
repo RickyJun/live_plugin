@@ -27,8 +27,11 @@ class LivePlugin {
         bitrate: bitrate,
         videoWidth: videoWidth,
         videoHeight: videoHeight);
-    await _liveController.initLiveConfig(rmptUrl: rmptUrl);
-    return _liveController;
+    int res = await _liveController.initLiveConfig(rmptUrl: rmptUrl);
+    if (res == 0) {
+      return _liveController;
+    }
+    return null;
   }
 
   static void setHandler({Function(Map msg) handler}) {
