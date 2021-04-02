@@ -91,7 +91,7 @@ class LivePlugin: FlutterPlugin, MethodCallHandler {
         if(liveController.textureId != null){
           var res:MutableMap<String,Any?> = HashMap<String,Any?>()
           res["textureId"] = liveController.textureId;
-          res["aspectRatio"] = liveController.getRESClient()!!.videoSize.width*1.0F/liveController.getRESClient()!!.videoSize.height
+          res["aspectRatio"] = liveController.getVideoSize().width*1.0F/liveController.getVideoSize().height
           result.success(res)
         }
       }

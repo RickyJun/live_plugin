@@ -1,6 +1,5 @@
 package com.rick.live.live_plugin
 
-import android.app.Activity
 import android.content.Context
 import android.graphics.SurfaceTexture
 import io.flutter.plugin.common.MethodChannel
@@ -14,6 +13,7 @@ import me.lake.librestreaming.encoder.MediaMuxerWrapper
 import me.lake.librestreaming.encoder.MediaVideoEncoder
 import me.lake.librestreaming.filter.hardvideofilter.BaseHardVideoFilter
 import me.lake.librestreaming.model.RESConfig
+import me.lake.librestreaming.model.Size
 import me.lake.librestreaming.tools.CameraUtil
 import me.lake.librestreaming.ws.StreamAVOption
 import me.lake.librestreaming.ws.StreamConfig
@@ -62,6 +62,8 @@ class LiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, co
             var isSucceed = this.resClient.prepare(this.resConfig)
             //初始化texture到resclient
             surfaceTexture = flutterTexture.surfaceTexture()
+            surfaceTexture!!.setDefaultBufferSize(avOption.previewWidth,avOption.previewHeight)
+
             addListenerAndFilter()
         }catch (e:Exception){
             getErrorMsg(e,"init")
@@ -133,7 +135,7 @@ class LiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, co
     //尺寸改变监听
     var VideoChangeListener = RESVideoChangeListener { width, height ->
         if (flutterTexture != null) {
-
+            System.out.println("width="+width)
             //textureView.setAspectRatio(AspectTextureView.MODE_INSIDE, width.toDouble() / height)
         }
     }
@@ -160,6 +162,9 @@ class LiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, co
     fun getRESClient(): RESClient? {
         this.resClient = RESClient()
         return this.resClient
+    }
+    fun getVideoSize(): Size {
+        return resClient.videoSize
     }
     private fun compatibleSize(avOptions: StreamAVOption) {
         val cameraSize = CameraUtil.getInstance().getBestSize(CameraUtil.getFrontCameraSize(), "800".toInt())
@@ -217,18 +222,18 @@ class LiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, co
      * 开始录制
      */
     private lateinit var mMuxer: MediaMuxerWrapper
-
+    private external fun nCreateNativeWindow(surface: SurfaceTexture)
     fun startRecord():Int {
-        resClient.startPreview(surfaceTexture,avOption.previewWidth,avOption.previewHeight)
-        startStreaming(this.avOption.streamUrl)
-        this.resClient.setNeedResetEglContext(true)
         try {
+            resClient.startPreview(surfaceTexture,avOption.previewWidth,avOption.previewHeight)
+            this.resClient.setNeedResetEglContext(true)
             mMuxer = MediaMuxerWrapper(".mp4") // if you record audio only, ".m4a" is also OK.
             MediaVideoEncoder(mMuxer, mMediaEncoderListener, StreamAVOption.recordVideoWidth, StreamAVOption.recordVideoHeight)
             MediaAudioEncoder(mMuxer, mMediaEncoderListener)
             mMuxer.prepare()
             mMuxer.startRecording()
             recordStatus = RecordStatus.Recording
+            startStreaming(this.avOption.streamUrl)
             return 0;
         } catch (e: Exception) {
             recordStatus = RecordStatus.Stop
@@ -264,10 +269,11 @@ class LiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, co
      */
     fun stopRecord(): String? {
         try {
+            stopStreaming()
             recordStatus = RecordStatus.Stop
             val path: String = mMuxer.getFilePath()
             mMuxer.stopRecording()
-            stopStreaming()
+
             System.gc()
             return path
         }catch (e:Exception){

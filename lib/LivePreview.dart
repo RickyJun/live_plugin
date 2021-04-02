@@ -9,9 +9,11 @@ class LivePreview extends StatelessWidget {
   Widget build(BuildContext context) {
     return controller.isInitialized
         ? AspectRatio(
-            aspectRatio: controller.aspectRatio,
-            child: Transform(transform: ,child: Texture(textureId: controller.textureId),),
-          )
+            aspectRatio: 1 / controller.aspectRatio,
+            child: Texture(
+              textureId: 10,
+              filterQuality: FilterQuality.high,
+            ))
         : Container();
   }
 }
