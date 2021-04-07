@@ -11,7 +11,7 @@ class LivePreview extends StatelessWidget {
         ? AspectRatio(
             aspectRatio: 1 / controller.aspectRatio,
             child: Texture(
-              textureId: 10,
+              textureId: controller.textureId,
               filterQuality: FilterQuality.high,
             ))
         : Container();

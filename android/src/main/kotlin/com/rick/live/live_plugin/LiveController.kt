@@ -2,6 +2,7 @@ package com.rick.live.live_plugin
 
 import android.content.Context
 import android.graphics.SurfaceTexture
+import android.view.Surface
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.view.TextureRegistry
 import me.lake.librestreaming.client.RESClient
@@ -63,12 +64,35 @@ class LiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, co
             //初始化texture到resclient
             surfaceTexture = flutterTexture.surfaceTexture()
             surfaceTexture!!.setDefaultBufferSize(avOption.previewWidth,avOption.previewHeight)
-
+            var surface:Surface = Surface(surfaceTexture)
             addListenerAndFilter()
         }catch (e:Exception){
             getErrorMsg(e,"init")
         }
 
+    }
+    /**
+     * 开始录制
+     */
+    private lateinit var mMuxer: MediaMuxerWrapper
+    private external fun nCreateNativeWindow(surface: SurfaceTexture)
+    fun startRecord():Int {
+        try {
+            resClient.startPreview(surfaceTexture,avOption.previewWidth,avOption.previewHeight)
+            this.resClient.setNeedResetEglContext(true)
+            mMuxer = MediaMuxerWrapper(".mp4") // if you record audio only, ".m4a" is also OK.
+            MediaVideoEncoder(mMuxer, mMediaEncoderListener, StreamAVOption.recordVideoWidth, StreamAVOption.recordVideoHeight)
+            MediaAudioEncoder(mMuxer, mMediaEncoderListener)
+            mMuxer.prepare()
+            mMuxer.startRecording()
+            recordStatus = RecordStatus.Recording
+            startStreaming(this.avOption.streamUrl)
+            return 0;
+        } catch (e: Exception) {
+            recordStatus = RecordStatus.Stop
+            getErrorMsg(e,"startRecord")
+            return -1;
+        }
     }
 
     /**
@@ -218,29 +242,7 @@ class LiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, co
 
     }
 
-    /**
-     * 开始录制
-     */
-    private lateinit var mMuxer: MediaMuxerWrapper
-    private external fun nCreateNativeWindow(surface: SurfaceTexture)
-    fun startRecord():Int {
-        try {
-            resClient.startPreview(surfaceTexture,avOption.previewWidth,avOption.previewHeight)
-            this.resClient.setNeedResetEglContext(true)
-            mMuxer = MediaMuxerWrapper(".mp4") // if you record audio only, ".m4a" is also OK.
-            MediaVideoEncoder(mMuxer, mMediaEncoderListener, StreamAVOption.recordVideoWidth, StreamAVOption.recordVideoHeight)
-            MediaAudioEncoder(mMuxer, mMediaEncoderListener)
-            mMuxer.prepare()
-            mMuxer.startRecording()
-            recordStatus = RecordStatus.Recording
-            startStreaming(this.avOption.streamUrl)
-            return 0;
-        } catch (e: Exception) {
-            recordStatus = RecordStatus.Stop
-            getErrorMsg(e,"startRecord")
-            return -1;
-        }
-    }
+
     fun pauseRecord(){
         try {
             if(recordStatus == RecordStatus.Recording){
