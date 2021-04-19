@@ -16,8 +16,6 @@ class LiveController {
   int videoHeight;
   bool isInitialized = false;
   bool isEnableMirror = false;
-  int _textureId;
-  double aspectRatio;
   LiveController(this._channel,
       {this.rmptServer,
       this.fps,
@@ -29,7 +27,7 @@ class LiveController {
   }
 
   //如果
-  Future<int> initLiveConfig({String rmptUrl}) async {
+  Future<int> initLiveConfig() async {
     PermissionStatus status = await Permission.camera.request();
     if (status != PermissionStatus.granted) {
       return -2;
@@ -40,12 +38,6 @@ class LiveController {
     }
     assert(!(rmptServer == null && rmptUrl == null));
     assert(videoHeight != null && videoWidth != null);
-    this.rmptServer = rmptServer;
-    this.rmptUrl = rmptUrl;
-    this.fps = fps;
-    this.bitrate = bitrate;
-    this.videoWidth = videoWidth;
-    this.videoHeight = videoHeight;
     this.rmptUrl ??= _generateRmptUrl();
     this.fps ??= 25;
     this.bitrate ??= 960 * 540;
@@ -56,29 +48,23 @@ class LiveController {
       "videoWidth": this.videoWidth,
       "videoHeight": this.videoHeight
     });
-    if (res != null) {
-      _textureId = res["textureId"];
-      aspectRatio = res["aspectRatio"];
-      isInitialized = true;
-      Clipboard.setData(ClipboardData(text: this.rmptUrl));
-    }
+    Clipboard.setData(ClipboardData(text: this.rmptUrl));
     return 0;
   }
 
-  get textureId {
-    if (isInitialized) {
-      if (_textureId == null) {
-        throw FlutterError(
-            "_textureId is empty,please check the step 'init',maybe throw some error");
-      } else {
-        return _textureId;
-      }
-    } else {
-      throw FlutterError("liveController had no init");
+  int textureId;
+
+  Future<int> getTextureId() async {
+    Map<dynamic, dynamic> res = await _channel.invokeMethod("textureId");
+    if (res != null) {
+      textureId = res["textureId"];
+      isInitialized = true;
+      return textureId;
     }
   }
 
   void startRecord() async {
+    initLiveConfig();
     int res = await _channel.invokeMethod("startRecord");
     if (res != null && res != 0) {
       throw FlutterError(

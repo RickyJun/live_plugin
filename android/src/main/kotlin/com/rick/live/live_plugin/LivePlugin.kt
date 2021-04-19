@@ -1,16 +1,29 @@
 package com.rick.live.live_plugin
+import android.app.Activity
 import android.content.Context
+import android.graphics.SurfaceTexture
+import android.os.Build
 import androidx.annotation.NonNull
+import androidx.annotation.RequiresApi
+import com.rick.live.live_plugin.controller_impl.ws.ErrorListener
+import com.rick.live.live_plugin.controller_impl.ws.WSLiveController
+import com.rick.live.live_plugin.controller_impl.yasea.YaseaLiveController
+import com.rick.live.live_plugin.controller_interface.LiveController
+import com.rick.live.live_plugin.controller_interface.StreamOption
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import io.flutter.view.TextureRegistry
 import me.lake.librestreaming.core.listener.RESConnectionListener
 import me.lake.librestreaming.ws.StreamAVOption
+import java.io.BufferedInputStream
 import java.lang.reflect.Method
-import kotlin.collections.HashMap
 
+interface ToListener {
+  fun to(surfaceTexture: SurfaceTexture);
+}
 /** LivePlugin */
 class LivePlugin: FlutterPlugin, MethodCallHandler {
   /// The MethodChannel that will the communication between Flutter and native Android
@@ -21,16 +34,23 @@ class LivePlugin: FlutterPlugin, MethodCallHandler {
   private lateinit var context: Context
   //推流controller
   private lateinit var liveController: LiveController
-
+  companion object{
+    var activity:Activity? = null
+    var bin: BufferedInputStream? = null
+    var toListener:ToListener? = null
+    var surfaceTextureEntry: TextureRegistry.SurfaceTextureEntry? = null
+  }
   //推流配置
-  private lateinit var streamAVOption: StreamAVOption
+  private lateinit var streamAVOption: StreamOption
   private lateinit var flutterPluginBinding: FlutterPlugin.FlutterPluginBinding
   private val methods:HashMap<String,Method> = HashMap();
+
 
 
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
     try {
       this.flutterPluginBinding = flutterPluginBinding
+
       channel = MethodChannel(flutterPluginBinding.binaryMessenger, "live_rtmp")
       channel.setMethodCallHandler(this)
       this.context = flutterPluginBinding.applicationContext;
@@ -55,32 +75,16 @@ class LivePlugin: FlutterPlugin, MethodCallHandler {
       channel.invokeMethod("onCloseConnectionResult",result)
     }
   }
+  lateinit var flutterSurfacetexture: TextureRegistry.SurfaceTextureEntry
+  @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
   override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
     when(call.method){
       "getPlatformVersion" -> result.success("Android ${android.os.Build.VERSION.RELEASE}")
       //初始化推流控制器
       "initLiveConfig" -> {
 
-        liveController = LiveController(this.flutterPluginBinding.textureRegistry.createSurfaceTexture(),this.flutterPluginBinding.applicationContext)
-        streamAVOption = StreamAVOption();
-        var args:Map<*,*>? = null
-        if(call.arguments is Map<*, *>){
-          args = call.arguments as Map<*, *>
-        }
-        streamAVOption.streamUrl = args!!["rmptUrl"].toString();
-
-//        streamAVOption.videoFramerate = args!!["fps"] as Int;
-//        streamAVOption.videoBitrate = args!!["bitrate"] as Int;
-        streamAVOption.videoWidth = args!!["videoWidth"] as Int;
-        streamAVOption.videoHeight = args!!["videoHeight"] as Int;
-        streamAVOption.previewWidth = args!!["videoWidth"] as Int;
-        streamAVOption.previewHeight = args!!["videoHeight"] as Int;
-        StreamAVOption.recordVideoWidth = args!!["videoWidth"] as Int;
-        StreamAVOption.recordVideoHeight = args!!["videoHeight"] as Int;
-        liveController.init(this.context,streamAVOption)
-        liveController.addStreamStateListener(resConnectionListener)
-        liveController.javaClass.methods.forEach { method -> methods[method.name]=method }
-        liveController.errorListener = object : ErrorListener{
+        liveController = WSLiveController(flutterSurfacetexture,this.flutterPluginBinding.binaryMessenger, this.flutterPluginBinding.applicationContext)
+        liveController.errorListener = object : ErrorListener {
           override fun onError(errorType:String, dec:String){
             var errorMsg:HashMap<String,Any> = HashMap();
             errorMsg["errorType"] = errorType;
@@ -88,12 +92,32 @@ class LivePlugin: FlutterPlugin, MethodCallHandler {
             channel.invokeMethod("error",errorMsg)
           }
         }
-        if(liveController.textureId != null){
-          var res:MutableMap<String,Any?> = HashMap<String,Any?>()
-          res["textureId"] = liveController.textureId;
-          res["aspectRatio"] = liveController.getVideoSize().width*1.0F/liveController.getVideoSize().height
-          result.success(res)
+        streamAVOption = StreamOption();
+        var args:Map<*,*>? = null
+        if(call.arguments is Map<*, *>){
+          args = call.arguments as Map<*, *>
         }
+        streamAVOption.streamUrl = args!!["rmptUrl"].toString();
+
+        streamAVOption.videoFramerate = args!!["fps"] as Int;
+        streamAVOption.videoBitrate = args!!["bitrate"] as Int;
+        streamAVOption.videoWidth = args!!["videoWidth"] as Int;
+        streamAVOption.videoHeight = args!!["videoHeight"] as Int;
+        streamAVOption.previewWidth = args!!["videoWidth"] as Int;
+        streamAVOption.previewHeight = args!!["videoHeight"] as Int;
+        StreamAVOption.recordVideoWidth = args!!["videoWidth"] as Int;
+        StreamAVOption.recordVideoHeight = args!!["videoHeight"] as Int;
+        liveController.init(activity,streamAVOption)
+        //(liveController as YaseaLiveController).instantiateCamera(call,result)
+        liveController.javaClass.methods.forEach { method -> methods[method.name]=method }
+
+
+      }
+      "textureId" -> {
+        flutterSurfacetexture = this.flutterPluginBinding.textureRegistry.createSurfaceTexture()
+        var res:MutableMap<String,Any?> = HashMap<String,Any?>()
+        res["textureId"] = flutterSurfacetexture.id();
+        result.success(res)
       }
       "takeScreenShot" -> {
         liveController.takeScreenShot(result)

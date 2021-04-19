@@ -8,12 +8,10 @@ class LivePreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return controller.isInitialized
-        ? AspectRatio(
-            aspectRatio: 1 / controller.aspectRatio,
-            child: Texture(
-              textureId: controller.textureId,
-              filterQuality: FilterQuality.high,
-            ))
+        ? Texture(
+            textureId: controller.textureId,
+            // filterQuality: FilterQuality.high,
+          )
         : Container();
   }
 }

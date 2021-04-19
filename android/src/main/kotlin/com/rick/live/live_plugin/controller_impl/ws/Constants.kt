@@ -1,4 +1,4 @@
-package com.rick.live.live_plugin
+package com.rick.live.live_plugin.controller_impl.ws
 
 import me.lake.librestreaming.filter.hardvideofilter.BaseHardVideoFilter
 import me.lake.librestreaming.ws.StreamConfig
