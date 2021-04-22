@@ -1,6 +1,7 @@
 package com.rick.live.live_plugin.controller_interface
 
 import android.content.Context
+import android.util.Size
 import com.rick.live.live_plugin.controller_impl.ws.ErrorListener
 import io.flutter.plugin.common.MethodChannel
 import me.lake.librestreaming.ws.StreamAVOption
@@ -16,9 +17,10 @@ abstract class LiveController {
         e.printStackTrace();
         errorListener.onError("$method err$e","msg:${e.message.toString()},cause:${e.cause.toString()}")
     }
-    open fun init(context: Context?, avOption: StreamOption) {}
-    open fun startRecord():Int{return -1}
-    open fun destroy() {}
+    open fun init(context: Context?, avOption: StreamOption):Int {throw NotImplementedError("init had not impl")}
+    open fun getPreviewSize(){throw NotImplementedError("getPreviewSize had not impl")}
+    open fun startRecord(){throw NotImplementedError("getPreviewSize had not impl")}
+    open fun close() {}
     //获取textureId
     open var textureId:Long? = null
         get() = 0
@@ -50,7 +52,7 @@ abstract class LiveController {
     /**
      * 截图
      */
-    open fun takeScreenShot(result: MethodChannel.Result) {}
+    open fun takeScreenShot() {}
     /**
      * 镜像
      * @param isEnableMirror   是否启用镜像功能 总开关

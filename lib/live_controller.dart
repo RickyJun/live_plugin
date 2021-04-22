@@ -9,24 +9,19 @@ enum RecordStatus { Stop, Recording, Pause }
 class LiveController {
   final MethodChannel _channel;
   String rmptServer = "rtmp://ossrs.net/";
-  String rmptUrl = "";
+  String rmptUrl;
   int fps;
   int bitrate;
-  int videoWidth;
-  int videoHeight;
   bool isInitialized = false;
   bool isEnableMirror = false;
-  LiveController(this._channel,
-      {this.rmptServer,
-      this.fps,
-      this.bitrate,
-      this.videoWidth,
-      this.videoHeight});
+  Size previewSize;
+  LiveController(this._channel, {this.rmptServer, this.fps, this.bitrate});
   String _generateRmptUrl() {
-    return "$rmptServer${Utils.getRandomAlphaString(3)}/${Utils.getRandomAlphaDigitString(5)}";
+    return '${rmptServer}live/livestream';
+    //return "$rmptServer${Utils.getRandomAlphaString(3)}/${Utils.getRandomAlphaDigitString(5)}";
   }
 
-  //如果
+  //
   Future<int> initLiveConfig() async {
     PermissionStatus status = await Permission.camera.request();
     if (status != PermissionStatus.granted) {
@@ -36,29 +31,42 @@ class LiveController {
     if (status != PermissionStatus.granted) {
       return -2;
     }
+    status = await Permission.microphone.request();
+    if (status != PermissionStatus.granted) {
+      return -2;
+    }
     assert(!(rmptServer == null && rmptUrl == null));
-    assert(videoHeight != null && videoWidth != null);
     this.rmptUrl ??= _generateRmptUrl();
     this.fps ??= 25;
     this.bitrate ??= 960 * 540;
+    await getTextureId();
+    Clipboard.setData(ClipboardData(text: this.rmptUrl));
     Map<dynamic, dynamic> res = await _channel.invokeMethod("initLiveConfig", {
       "rmptUrl": this.rmptUrl,
       "fps": this.fps,
       "bitrate": this.bitrate,
-      "videoWidth": this.videoWidth,
-      "videoHeight": this.videoHeight
     });
-    Clipboard.setData(ClipboardData(text: this.rmptUrl));
+    await _getPreviewSize();
+    if (res != null) {
+      isInitialized = true;
+    }
     return 0;
   }
 
-  int textureId;
+  Future<Size> _getPreviewSize() async {
+    Map<String, dynamic> res = await _channel.invokeMethod("getPreviewSize");
+    if (res == null) {
+      throw FlutterError("getPreviewSize return null");
+    }
+    previewSize = Size(res["width"], res["height"]);
+    return previewSize;
+  }
 
+  int textureId;
   Future<int> getTextureId() async {
     Map<dynamic, dynamic> res = await _channel.invokeMethod("textureId");
     if (res != null) {
       textureId = res["textureId"];
-      isInitialized = true;
       return textureId;
     }
   }

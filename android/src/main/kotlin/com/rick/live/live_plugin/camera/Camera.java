@@ -80,7 +80,7 @@ interface ErrorCallback {
   void onError(String errorCode, String errorMessage);
 }
 
-public class Camera implements CameraDelegate {
+public class Camera {
   private static final String TAG = "Camera";
 
   private SurfaceTexture cam;
@@ -90,7 +90,7 @@ public class Camera implements CameraDelegate {
   private final int sensorOrientation;
   private final String cameraName;
   private final Size captureSize;
-  private final Size previewSize;
+  public final Size previewSize;
   private final boolean enableAudio;
   private final Context applicationContext;
   private final CamcorderProfile recordingProfile;
@@ -113,16 +113,17 @@ public class Camera implements CameraDelegate {
   private CameraRegions cameraRegions;
   private int exposureOffset;
   private boolean useAutoFocus = true;
-  private Range<Integer> fpsRange;
+  public Range<Integer> fpsRange;
   private PlatformChannel.DeviceOrientation lockedCaptureOrientation;
 
-  private static final HashMap<String, Integer> supportedImageFormats;
-  private String imageFormatGroup;
+  public static final HashMap<String, Integer> supportedImageFormats;
+  public String imageFormatGroup;
   // Current supported outputs
   static {
     supportedImageFormats = new HashMap<>();
     supportedImageFormats.put("yuv420", 35);
     supportedImageFormats.put("jpeg", 256);
+    supportedImageFormats.put("YV12",842094169);
   }
 
   @RequiresApi(api = VERSION_CODES.LOLLIPOP)
@@ -293,7 +294,6 @@ public class Camera implements CameraDelegate {
   }
   @RequiresApi(api = VERSION_CODES.KITKAT)
   @SuppressLint("MissingPermission")
-  @Override
   public void open(String imageFormatGroup, final SurfaceTexture cam) throws CameraAccessException {
     this.imageFormatGroup = imageFormatGroup;
     if (VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP) {
@@ -378,23 +378,7 @@ public class Camera implements CameraDelegate {
     }
   }
 
-  @Override
-  public void selectCameraFpsRange(RESCoreParameters coreParameters) {
-    coreParameters.previewMinFps = fpsRange.getLower();
-    coreParameters.previewMaxFps = fpsRange.getUpper();
-  }
 
-  @Override
-  public void selectCameraPreviewWH(RESCoreParameters coreParameters, me.lake.librestreaming.model.Size targetSize) {
-    coreParameters.previewVideoHeight = targetSize.getHeight();
-    coreParameters.previewVideoWidth = targetSize.getWidth();
-  }
-
-  @Override
-  public boolean selectCameraColorFormat(RESCoreParameters coreParameters) {
-    coreParameters.previewColorFormat = supportedImageFormats.get(imageFormatGroup);
-    return true;
-  }
 
   @RequiresApi(api = VERSION_CODES.LOLLIPOP)
   private void createCaptureSession(int templateType, Surface... surfaces)
@@ -1431,7 +1415,6 @@ public class Camera implements CameraDelegate {
       cameraCaptureSession = null;
     }
   }
-  @Override
   public void close() {
     closeCaptureSession();
     if (cameraDevice != null) {
@@ -1452,7 +1435,6 @@ public class Camera implements CameraDelegate {
       mediaRecorder = null;
     }
   }
-  @Override
   public void dispose() {
     close();
     cam.release();

@@ -3,11 +3,11 @@ import android.app.Activity
 import android.content.Context
 import android.graphics.SurfaceTexture
 import android.os.Build
+import android.util.Size
 import androidx.annotation.NonNull
 import androidx.annotation.RequiresApi
 import com.rick.live.live_plugin.controller_impl.ws.ErrorListener
 import com.rick.live.live_plugin.controller_impl.ws.WSLiveController
-import com.rick.live.live_plugin.controller_impl.yasea.YaseaLiveController
 import com.rick.live.live_plugin.controller_interface.LiveController
 import com.rick.live.live_plugin.controller_interface.StreamOption
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -82,8 +82,7 @@ class LivePlugin: FlutterPlugin, MethodCallHandler {
       "getPlatformVersion" -> result.success("Android ${android.os.Build.VERSION.RELEASE}")
       //初始化推流控制器
       "initLiveConfig" -> {
-
-        liveController = WSLiveController(flutterSurfacetexture,this.flutterPluginBinding.binaryMessenger, this.flutterPluginBinding.applicationContext)
+        liveController = WSLiveController(flutterSurfacetexture,this.flutterPluginBinding.binaryMessenger,result, this.flutterPluginBinding.applicationContext)
         liveController.errorListener = object : ErrorListener {
           override fun onError(errorType:String, dec:String){
             var errorMsg:HashMap<String,Any> = HashMap();
@@ -98,40 +97,25 @@ class LivePlugin: FlutterPlugin, MethodCallHandler {
           args = call.arguments as Map<*, *>
         }
         streamAVOption.streamUrl = args!!["rmptUrl"].toString();
-
-        streamAVOption.videoFramerate = args!!["fps"] as Int;
-        streamAVOption.videoBitrate = args!!["bitrate"] as Int;
-        streamAVOption.videoWidth = args!!["videoWidth"] as Int;
-        streamAVOption.videoHeight = args!!["videoHeight"] as Int;
-        streamAVOption.previewWidth = args!!["videoWidth"] as Int;
-        streamAVOption.previewHeight = args!!["videoHeight"] as Int;
-        StreamAVOption.recordVideoWidth = args!!["videoWidth"] as Int;
-        StreamAVOption.recordVideoHeight = args!!["videoHeight"] as Int;
-        liveController.init(activity,streamAVOption)
-        //(liveController as YaseaLiveController).instantiateCamera(call,result)
+        streamAVOption.videoFramerate = args["fps"] as Int;
+        streamAVOption.videoBitrate = args["bitrate"] as Int;
+        val res = liveController.init(activity,streamAVOption)
+        result.success(res)
         liveController.javaClass.methods.forEach { method -> methods[method.name]=method }
-
-
       }
       "textureId" -> {
         flutterSurfacetexture = this.flutterPluginBinding.textureRegistry.createSurfaceTexture()
-        var res:MutableMap<String,Any?> = HashMap<String,Any?>()
+        val res:MutableMap<String,Any?> = HashMap<String,Any?>()
         res["textureId"] = flutterSurfacetexture.id();
         result.success(res)
-      }
-      "takeScreenShot" -> {
-        liveController.takeScreenShot(result)
-      }
-      "close" -> {
-        liveController.destroy()
       }
       else -> {
         if(methods.containsKey(call.method)){
           var res:Any? = null
-          if(call.arguments == null){
-            res = methods[call.method]!!.invoke(liveController)
+          res = if(call.arguments == null){
+            methods[call.method]!!.invoke(liveController)
           }else{
-            res = methods[call.method]!!.invoke(liveController,call.arguments)
+            methods[call.method]!!.invoke(liveController,call.arguments)
           }
 
           if(res != null){

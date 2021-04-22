@@ -109,6 +109,7 @@ class DeviceOrientationManager {
             }
           }
         };
+   // activity.unregisterReceiver(broadcastReceiver);
     activity.registerReceiver(broadcastReceiver, orientationIntentFilter);
     broadcastReceiver.onReceive(activity, null);
   }

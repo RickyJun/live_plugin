@@ -3,14 +3,18 @@ package com.rick.live.live_plugin.controller_impl.ws
 import android.content.Context
 import android.graphics.SurfaceTexture
 import android.os.Build
+import android.util.Size
+import androidx.annotation.NonNull
 import androidx.annotation.RequiresApi
 import com.rick.live.live_plugin.LivePlugin
 import com.rick.live.live_plugin.camera.CameraUtils
 import com.rick.live.live_plugin.camera.DartMessenger
+import com.rick.live.live_plugin.camera.types.FlashMode
 import com.rick.live.live_plugin.controller_interface.LiveController
 import com.rick.live.live_plugin.controller_interface.RecordStatus
 import com.rick.live.live_plugin.controller_interface.StreamOption
 import io.flutter.plugin.common.BinaryMessenger
+import io.flutter.plugin.common.FlutterException
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.view.TextureRegistry
@@ -32,7 +36,7 @@ import me.lake.librestreaming.ws.filter.audiofilter.SetVolumeAudioFilter
 interface ErrorListener {
     fun onError(errorType:String,dec:String)
 }
-class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, val messenger: BinaryMessenger, context: Context?): LiveController() {
+class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, val messenger: BinaryMessenger, val result: MethodChannel.Result, context: Context?): LiveController() {
 
     private lateinit var resClient: RESClient
     private var resConfig: RESConfig? = null
@@ -41,63 +45,69 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
     private var outerStreamStateListeners: java.util.ArrayList<RESConnectionListener> = ArrayList()
     private val quality_value_min = 400 * 1024
     private val quality_value_max = 700 * 1024
-    var camera: com.rick.live.live_plugin.camera.Camera? = null
+    var wsCamera: WSCamera? = null
     /**
      * 根据AVOption初始化&打开预览
      * @param avOption
      */
-    override fun init(context: Context?, avOption: StreamOption){
+    override fun init(context: Context?, avOption: StreamOption):Int{
         try {
-
-            //this.avOption = avOption
-            //初始化尺寸
-            compatibleSize(this.avOption)
+            initAvOption(avOption)
             //初始化resclient
             this.resClient = this.getRESClient()!!
             //设置res的上下文
             setContext(LivePlugin.activity)
+
+            //初始化camera
+            wsCamera = WSCamera(flutterTexture,messenger)
+            //初始化preview size
+            this.avOption.videoWidth = wsCamera!!.camera!!.previewSize.width
+            this.avOption.videoHeight = wsCamera!!.camera!!.previewSize.height
+            this.avOption.previewWidth = wsCamera!!.camera!!.previewSize.width
+            this.avOption.previewHeight = wsCamera!!.camera!!.previewSize.height
+            StreamAVOption.recordVideoWidth = wsCamera!!.camera!!.previewSize.width
+            StreamAVOption.recordVideoHeight = wsCamera!!.camera!!.previewSize.height
             //生产resConfig
             this.resConfig = StreamConfig.build(context, this.avOption)
-            //根据resConfig准备resclient
-            instantiateCamera()
-            var isSucceed = this.resClient.prepare(this.resConfig,this.camera)
-            //初始化texture到resclient
+            this.resClient.prepare(this.resConfig,this.wsCamera)
+            //初始化preview texture到resclient
             surfaceTexture = flutterTexture.surfaceTexture()
             surfaceTexture!!.setDefaultBufferSize(avOption.previewWidth,avOption.previewHeight)
             addListenerAndFilter()
             startRecord()
+            return 0
         }catch (e:Exception){
             getErrorMsg(e,"init")
+            return -1
         }
-
+    }
+    //StreamOption转为ws的StreamAVOption
+    fun initAvOption(avOption: StreamOption){
+        this.avOption.previewHeight = avOption.previewHeight;
+        this.avOption.previewWidth = avOption.previewWidth;
+        this.avOption.videoHeight = avOption.videoHeight;
+        this.avOption.videoWidth = avOption.videoWidth;
+        this.avOption.videoBitrate = avOption.videoBitrate;
+        this.avOption.videoFramerate = avOption.videoFramerate;
+        this.avOption.streamUrl = avOption.streamUrl;
     }
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    fun instantiateCamera() {
-        var cameras: MutableList<Map<String, Any>> = java.util.ArrayList()
-        cameras = CameraUtils.getAvailableCameras(LivePlugin.activity!!);
-        var cameraName:String? = null
-        for(map in cameras){
-            if(map["lensFacing"] == "front"){
-                cameraName = map["name"] as String;
-            }
+
+    override fun getPreviewSize(){
+        if(wsCamera!!.camera!!.previewSize == null){
+            throw java.lang.Exception("camera have not init,previewSize is null");
         }
-        val resolutionPreset = "medium"
-        val enableAudio = true
-        val dartMessenger = DartMessenger(messenger, flutterTexture.id())
-        camera = com.rick.live.live_plugin.camera.Camera(
-                LivePlugin.activity,
-                null,
-                dartMessenger,
-                cameraName!!,
-                resolutionPreset,
-                enableAudio)
-       // camera!!.open("jpeg")
+        val size:Size =  wsCamera!!.camera!!.previewSize
+        val res:MutableMap<String,Any?> = HashMap<String,Any?>()
+        res["width"] = size.width
+        res["height"] = size.height
+        this.result.success(res)
     }
     /**
      * 开始录制
      */
     private lateinit var mMuxer: MediaMuxerWrapper
-    override fun startRecord():Int {
+    override fun startRecord() {
         try {
             resClient.startPreview(surfaceTexture,avOption.previewWidth,avOption.previewHeight)
             this.resClient.setNeedResetEglContext(true)
@@ -107,19 +117,17 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
             mMuxer.prepare()
             mMuxer.startRecording()
             recordStatus = RecordStatus.Recording
-            startStreaming(this.avOption.streamUrl)
-            return 0;
+            //startStreaming(this.avOption.streamUrl)
         } catch (e: Exception) {
             recordStatus = RecordStatus.Stop
             getErrorMsg(e,"startRecord")
-            return -1;
         }
     }
 
     /**
      * destroy
      */
-    override fun destroy() {
+    override fun close() {
         try {
             this.resClient.setConnectionListener(null)
             this.resClient.setVideoChangeListener(null)
@@ -155,10 +163,19 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
     override var textureId:Long? = null
         get() = flutterTexture.id()
     //连接状态监听
+    var reConnMaxTime:Int = 10;
     private var ConnectionListener: RESConnectionListener = object : RESConnectionListener {
         override fun onOpenConnectionResult(result: Int) {
             if (result == 1) {
-                resClient.stopStreaming()
+                if(reConnMaxTime > 0){
+                    resClient.reStartStreaming(avOption.streamUrl)
+                    reConnMaxTime -= 1
+                }else{
+                    resClient.stopStreaming();
+                    //TODO 提示连接失败
+                }
+            }else{
+                System.out.println("result == 0,success!");
             }
             for (listener in outerStreamStateListeners) {
                 listener.onOpenConnectionResult(result)
@@ -166,6 +183,11 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
         }
 
         override fun onWriteError(errno: Int) {
+            if(errno == 9 || errno == 32){
+                //when sending, socket closed by socket error 32,broken pipe，重写连接
+                System.out.println("socket closed by other error =======================");
+                resClient.reStartStreaming(avOption.streamUrl);
+            }
             for (listener in outerStreamStateListeners) {
                 listener.onWriteError(errno)
             }
@@ -209,18 +231,6 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
         return this.resClient
     }
 
-    private fun compatibleSize(avOptions: StreamAVOption) {
-        val cameraSize = CameraUtil.getInstance().getBestSize(CameraUtil.getFrontCameraSize(), "800".toInt())
-        if (!CameraUtil.hasSupportedFrontVideoSizes) {
-            if (null == cameraSize || cameraSize.width <= 0) {
-                avOptions.videoWidth = 720
-                avOptions.videoHeight = 480
-            } else {
-                avOptions.videoWidth = cameraSize.width
-                avOptions.videoHeight = cameraSize.height
-            }
-        }
-    }
 
     /**
      * 设置上下文
@@ -321,10 +331,14 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
     /**
      * 摄像头开关闪光灯
      */
+    var flashMode:FlashMode = FlashMode.off
     override fun toggleFlashLight() {
-        if (this.resClient != null) {
-            this.resClient.toggleFlashLight()
+        if(flashMode == FlashMode.off){
+            flashMode = FlashMode.always
+        }else{
+            flashMode = FlashMode.off
         }
+        wsCamera!!.camera!!.setFlashMode(this.result,flashMode)
     }
 
     /**
@@ -348,7 +362,7 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
     /**
      * 截图
      */
-    override fun takeScreenShot(result: MethodChannel.Result) {
+    override fun takeScreenShot() {
         if (this.resClient != null) {
             this.resClient.takeScreenShot{
                 //存储bitmap到本地data
