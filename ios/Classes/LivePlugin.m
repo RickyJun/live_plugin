@@ -30,27 +30,37 @@ LiveContaoller *liveController;
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
     if([call.method isEqualToString:@"initLiveConfig"]){
-        NSDictionary *args = call.arguments;
-        liveController = [[LiveContaoller alloc] initWithOption: CGSizeMake([[args objectForKey:@"videoWidth"] floatValue] ,[[args objectForKey:@"videoHeight"] floatValue]) fps:[[args objectForKey:@"fps"] floatValue]  bitrate:[[args objectForKey:@"bitrate"] floatValue]];
-        liveController.textureId = [_registrarTextures registerTexture:liveController];
-        liveController.onFrameAvailable = ^{
-            [self->_registrarTextures textureFrameAvailable:liveController.textureId];
-        };
-        liveController.onError = ^(NSString *errorType,NSString *dec){
-            NSDictionary *errorMsg = [[NSDictionary alloc] init];
-            [errorMsg setValue:@"errorType" forKey:errorType];
-            [errorMsg setValue:@"dec" forKey:dec];
-            [channel invokeMethod:@"error" arguments:errorMsg];
-        };
+        @try {
+            NSDictionary *args = call.arguments;
+            liveController = [[LiveContaoller alloc] initWithOption:CGSizeMake([[args objectForKey:@"videoWidth"] floatValue],[[args objectForKey:@"videoHeight"] floatValue]) fps:[[args objectForKey:@"fps"] floatValue] bitrate:[[args objectForKey:@"bitrate"] floatValue]];
+            liveController.textureId = [_registrarTextures registerTexture:liveController];
+            liveController.onFrameAvailable = ^{
+                [self->_registrarTextures textureFrameAvailable:liveController.textureId];
+            };
+            liveController.onError = ^(NSString *errorType,NSString *dec){
+                NSDictionary *errorMsg = [[NSDictionary alloc] init];
+                [errorMsg setValue:@"errorType" forKey:errorType];
+                [errorMsg setValue:@"dec" forKey:dec];
+                [channel invokeMethod:@"error" arguments:errorMsg];
+            };
+            result(@"ok!");
+        } @catch (NSException *exception) {
+            result(@"error!");
+        } @finally {
+            liveController = nil;
+        }
+        
+    
+    }else if([call.method isEqual:@"takeScreenShot"]){
+        [liveController takeScreenShot:result];
+    }else if([call.method isEqual:@"close"]){
+        liveController = nil;
+    }else if([call.method isEqual:@"textureId"]){
         if(liveController.textureId){
             NSDictionary *res = [[NSDictionary alloc] init];
             [res setValue:@(liveController.textureId) forKey:@"textureId"];
             result(res);
         }
-    }else if([call.method isEqual:@"takeScreenShot"]){
-        [liveController takeScreenShot:result];
-    }else if([call.method isEqual:@"close"]){
-        liveController = nil;
     }else{
         SEL method = NSSelectorFromString(call.method);
         if(method != nil && [liveController respondsToSelector:method]){

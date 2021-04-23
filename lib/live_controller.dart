@@ -14,8 +14,13 @@ class LiveController {
   int bitrate;
   bool isInitialized = false;
   bool isEnableMirror = false;
-  Size previewSize;
-  LiveController(this._channel, {this.rmptServer, this.fps, this.bitrate});
+  int videoWidth, videoHeight;
+  LiveController(this._channel,
+      {this.rmptServer,
+      this.fps,
+      this.bitrate,
+      this.videoWidth,
+      this.videoHeight});
   String _generateRmptUrl() {
     return '${rmptServer}live/livestream';
     //return "$rmptServer${Utils.getRandomAlphaString(3)}/${Utils.getRandomAlphaDigitString(5)}";
@@ -39,30 +44,34 @@ class LiveController {
     this.rmptUrl ??= _generateRmptUrl();
     this.fps ??= 25;
     this.bitrate ??= 960 * 540;
+    this.videoHeight ??= 720;
+    this.videoWidth ??= 1280;
     await getTextureId();
     Clipboard.setData(ClipboardData(text: this.rmptUrl));
     String ret = await _channel.invokeMethod("initLiveConfig", {
       "rmptUrl": this.rmptUrl,
       "fps": this.fps,
       "bitrate": this.bitrate,
+      "videoHeight": videoHeight,
+      "videoWidth": videoWidth
     });
-    await _getPreviewSize();
+    // await _getPreviewSize();
     if (ret != null) {
       isInitialized = true;
     }
     return 0;
   }
 
-  double get aspectRatio => previewSize.width / previewSize.height;
-  Future<Size> _getPreviewSize() async {
-    Map<dynamic, dynamic> res = await _channel.invokeMethod("getPreviewSize");
-    if (res == null) {
-      throw FlutterError("getPreviewSize return null");
-    }
-    previewSize = Size(
-        (res["width"] as int).toDouble(), (res["height"] as int).toDouble());
-    return previewSize;
-  }
+  double get aspectRatio => videoWidth / videoHeight;
+  // Future<Size> _getPreviewSize() async {
+  //   Map<dynamic, dynamic> res = await _channel.invokeMethod("getPreviewSize");
+  //   if (res == null) {
+  //     throw FlutterError("getPreviewSize return null");
+  //   }
+  //   previewSize = Size(
+  //       (res["width"] as int).toDouble(), (res["height"] as int).toDouble());
+  //   return previewSize;
+  // }
 
   int textureId;
   Future<int> getTextureId() async {

@@ -53,11 +53,13 @@ fps:(CGFloat)fps
             _pathToMovie = [NSHomeDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"Documents%@movie.m4v",fileName]];
             unlink([_pathToMovie UTF8String]); // If a file already exists, AVAssetWriter won't let you record new frames, so delete the old movie
             NSURL *movieURL = [NSURL fileURLWithPath:_pathToMovie];
-            self.movieWriter = [[GPUImageMovieWriterEx alloc] initWithMovieURL:movieURL size:CGSizeMake(360.0, 640.0)];
+            //self.movieWriter = [[GPUImageMovieWriterEx alloc] initWithMovieURL:movieURL size:CGSizeMake(360.0, 640.0)];
+            self.movieWriter = [[GPUImageMovieWriterEx alloc] initWithMovieURL:movieURL size:CGSizeMake(videoSize.height, videoSize.width)];
             self.movieWriter.encodingLiveVideo = YES;
             self.movieWriter.pixelBufferdelegate = self;
             [self.videoCamera addTarget:self.movieWriter];
             [self.videoCamera addTarget:self];
+            [self startRecord];
         } @catch (NSException *exception) {
             [self getErrorMsg:exception method:@"initWithOption"];
         } @finally {
@@ -75,17 +77,10 @@ fps:(CGFloat)fps
 }
 #pragma mark--视频基础控制
 - (int)startRecord{
-    @try {
-        //[self.rtmpSession startRtmpSession:@"rtmp://192.168.1.104/live/123456"];
-        [self.rtmpSession startRtmpSession:self.rmptUrl];
-        [self.videoCamera startCameraCapture];
-        [self.movieWriter startRecording];
-        _recordStatus = RecordStatusRecording;
-        return 0;
-    } @catch (NSException *exception) {
-        [self getErrorMsg:exception method:@"startRecord"];
-        return -1;
-    }
+    [self.rtmpSession startRtmpSession:self.rmptUrl];
+    [self.videoCamera startCameraCapture];
+    [self.movieWriter startRecording];
+    _recordStatus = RecordStatusRecording;
 }
 
 //设置/切换滤镜

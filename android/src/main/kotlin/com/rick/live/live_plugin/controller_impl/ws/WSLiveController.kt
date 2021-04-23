@@ -54,12 +54,6 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
             this.resClient = this.getRESClient()!!
             //设置res的上下文
             setContext(LivePlugin.activity)
-            this.avOption.videoWidth = 1280
-            this.avOption.videoHeight =720
-            this.avOption.previewWidth = 1280
-            this.avOption.previewHeight = 720
-            StreamAVOption.recordVideoWidth =1280
-            StreamAVOption.recordVideoHeight =720
             //生产resConfig
             this.resConfig = StreamConfig.build(context, this.avOption)
             this.resClient.prepare(this.resConfig)

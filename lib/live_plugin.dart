@@ -15,9 +15,19 @@ class LivePlugin {
 
   //初始化，rmptServer，rmptUrl传其中一个
   static Future<LiveController> init(
-      {String rmptServer, String rmptUrl, int fps, int bitrate}) async {
+      {String rmptServer,
+      String rmptUrl,
+      int fps,
+      int bitrate,
+      int videoWidth,
+      int videoHeight}) async {
     _liveController = LiveController(_channel,
-        rmptServer: rmptServer, fps: fps, bitrate: bitrate);
+        rmptServer: rmptServer,
+        fps: fps,
+        bitrate: bitrate,
+        videoWidth: videoWidth,
+        videoHeight: videoHeight);
+    await _liveController.initLiveConfig();
     return _liveController;
   }
 

@@ -96,6 +96,10 @@ class LivePlugin: FlutterPlugin, MethodCallHandler {
         if(call.arguments is Map<*, *>){
           args = call.arguments as Map<*, *>
         }
+        streamAVOption.previewHeight = args!!["videoHeight"] as Int;
+        streamAVOption.previewWidth = args!!["videoWidth"] as Int;
+        streamAVOption.videoHeight = args!!["videoHeight"] as Int;
+        streamAVOption.videoWidth = args!!["videoWidth"] as Int;
         streamAVOption.streamUrl = args!!["rmptUrl"].toString();
         streamAVOption.videoFramerate = args["fps"] as Int;
         streamAVOption.videoBitrate = args["bitrate"] as Int;

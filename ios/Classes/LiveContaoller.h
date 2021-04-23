@@ -30,16 +30,12 @@
 
 
 @property(assign, nonatomic) int64_t textureId;
-@property(assign, strong) void(^onError)(NSString *errorType,NSString *dec);
-- (instancetype)initWithOption:(CGSize)videoSize
-fps:(CGFloat)fps
-                       bitrate:(CGFloat)bitrate rmptUrl:(NSString*)rmptUrl;
+@property(nonatomic, strong) void(^onError)(NSString *errorType,NSString *dec);
+- (instancetype)initWithOption:(CGSize)videoSize fps:(CGFloat)fps bitrate:(CGFloat)bitrate rmptUrl:(NSString*)rmptUrl;
 
 - (NSInteger)recordStatus;
 //设置/切换滤镜
 - (void)setHardVideoFilterByName:(NSString *)type;
-//开始录像
-- (int)startRecord;
 //暂停
 - (void)pauseRecord;
 //恢复
