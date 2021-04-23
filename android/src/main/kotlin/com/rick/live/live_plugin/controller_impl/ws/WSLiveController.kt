@@ -7,9 +7,6 @@ import android.util.Size
 import androidx.annotation.NonNull
 import androidx.annotation.RequiresApi
 import com.rick.live.live_plugin.LivePlugin
-import com.rick.live.live_plugin.camera.CameraUtils
-import com.rick.live.live_plugin.camera.DartMessenger
-import com.rick.live.live_plugin.camera.types.FlashMode
 import com.rick.live.live_plugin.controller_interface.LiveController
 import com.rick.live.live_plugin.controller_interface.RecordStatus
 import com.rick.live.live_plugin.controller_interface.StreamOption
@@ -31,12 +28,13 @@ import me.lake.librestreaming.tools.CameraUtil
 import me.lake.librestreaming.ws.StreamAVOption
 import me.lake.librestreaming.ws.StreamConfig
 import me.lake.librestreaming.ws.filter.audiofilter.SetVolumeAudioFilter
+import org.json.JSONObject
 
 
 interface ErrorListener {
     fun onError(errorType:String,dec:String)
 }
-class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, val messenger: BinaryMessenger, val result: MethodChannel.Result, context: Context?): LiveController() {
+class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, val messenger: BinaryMessenger, context: Context?): LiveController() {
 
     private lateinit var resClient: RESClient
     private var resConfig: RESConfig? = null
@@ -45,40 +43,35 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
     private var outerStreamStateListeners: java.util.ArrayList<RESConnectionListener> = ArrayList()
     private val quality_value_min = 400 * 1024
     private val quality_value_max = 700 * 1024
-    var wsCamera: WSCamera? = null
     /**
      * 根据AVOption初始化&打开预览
      * @param avOption
      */
-    override fun init(context: Context?, avOption: StreamOption):Int{
+    override fun init(context: Context?, avOption: StreamOption,result: MethodChannel.Result){
         try {
             initAvOption(avOption)
             //初始化resclient
             this.resClient = this.getRESClient()!!
             //设置res的上下文
             setContext(LivePlugin.activity)
-
-            //初始化camera
-            wsCamera = WSCamera(flutterTexture,messenger)
-            //初始化preview size
-            this.avOption.videoWidth = wsCamera!!.camera!!.previewSize.width
-            this.avOption.videoHeight = wsCamera!!.camera!!.previewSize.height
-            this.avOption.previewWidth = wsCamera!!.camera!!.previewSize.width
-            this.avOption.previewHeight = wsCamera!!.camera!!.previewSize.height
-            StreamAVOption.recordVideoWidth = wsCamera!!.camera!!.previewSize.width
-            StreamAVOption.recordVideoHeight = wsCamera!!.camera!!.previewSize.height
+            this.avOption.videoWidth = 1280
+            this.avOption.videoHeight =720
+            this.avOption.previewWidth = 1280
+            this.avOption.previewHeight = 720
+            StreamAVOption.recordVideoWidth =1280
+            StreamAVOption.recordVideoHeight =720
             //生产resConfig
             this.resConfig = StreamConfig.build(context, this.avOption)
-            this.resClient.prepare(this.resConfig,this.wsCamera)
+            this.resClient.prepare(this.resConfig)
             //初始化preview texture到resclient
             surfaceTexture = flutterTexture.surfaceTexture()
             surfaceTexture!!.setDefaultBufferSize(avOption.previewWidth,avOption.previewHeight)
             addListenerAndFilter()
-            startRecord()
-            return 0
+            startRecord(result)
+            result.success("ok")
         }catch (e:Exception){
             getErrorMsg(e,"init")
-            return -1
+            result.success("error")
         }
     }
     //StreamOption转为ws的StreamAVOption
@@ -92,32 +85,27 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
         this.avOption.streamUrl = avOption.streamUrl;
     }
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-
-    override fun getPreviewSize(){
-        if(wsCamera!!.camera!!.previewSize == null){
-            throw java.lang.Exception("camera have not init,previewSize is null");
-        }
-        val size:Size =  wsCamera!!.camera!!.previewSize
+    override fun getPreviewSize(result: MethodChannel.Result){
         val res:MutableMap<String,Any?> = HashMap<String,Any?>()
-        res["width"] = size.width
-        res["height"] = size.height
-        this.result.success(res)
+        res["width"] = this.avOption.previewWidth
+        res["height"] = this.avOption.previewHeight
+        result.success(res)
     }
     /**
      * 开始录制
      */
     private lateinit var mMuxer: MediaMuxerWrapper
-    override fun startRecord() {
+    private fun startRecord(result: MethodChannel.Result) {
         try {
             resClient.startPreview(surfaceTexture,avOption.previewWidth,avOption.previewHeight)
             this.resClient.setNeedResetEglContext(true)
             mMuxer = MediaMuxerWrapper(".mp4") // if you record audio only, ".m4a" is also OK.
-            MediaVideoEncoder(mMuxer, mMediaEncoderListener, StreamAVOption.recordVideoWidth, StreamAVOption.recordVideoHeight)
+            MediaVideoEncoder(mMuxer, mMediaEncoderListener, avOption.previewWidth, avOption.previewHeight)
             MediaAudioEncoder(mMuxer, mMediaEncoderListener)
             mMuxer.prepare()
             mMuxer.startRecording()
             recordStatus = RecordStatus.Recording
-            //startStreaming(this.avOption.streamUrl)
+            startStreaming(result,this.avOption.streamUrl)
         } catch (e: Exception) {
             recordStatus = RecordStatus.Stop
             getErrorMsg(e,"startRecord")
@@ -127,7 +115,7 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
     /**
      * destroy
      */
-    override fun close() {
+    override fun close(result: MethodChannel.Result) {
         try {
             this.resClient.setConnectionListener(null)
             this.resClient.setVideoChangeListener(null)
@@ -135,7 +123,7 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
                 this.resClient.stopStreaming()
             }
             if (recordStatus == RecordStatus.Recording) {
-                stopRecord()
+                stopRecord(result)
             }
             this.resClient.destroy()
         }catch (e:Exception){
@@ -248,7 +236,7 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
     /**
      * 开始推流,
      */
-    override fun startStreaming(rtmpUrl: String?) {
+    override fun startStreaming(result: MethodChannel.Result,rtmpUrl: String?) {
         try {
             this.resClient.startStreaming(rtmpUrl)
         }catch (e:Exception){
@@ -260,7 +248,7 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
     /**
      * 停止推流,关闭推流
      */
-    override fun stopStreaming() {
+    override fun stopStreaming(result: MethodChannel.Result) {
         try {
             this.resClient.stopStreaming()
         }catch (e:Exception){
@@ -270,7 +258,7 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
     }
 
 
-    override fun pauseRecord(){
+    override fun pauseRecord(result: MethodChannel.Result){
         try {
             if(recordStatus == RecordStatus.Recording){
                 resClient.stopPreview(false)
@@ -282,7 +270,7 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
 
 
     }
-    override fun resumeRecord(){
+    override fun resumeRecord(result: MethodChannel.Result){
         try {
             if(recordStatus == RecordStatus.Pause || recordStatus == RecordStatus.Stop){
                 resClient.startPreview(surfaceTexture,avOption.videoWidth,avOption.videoHeight)
@@ -296,9 +284,9 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
     /**
      * 停止录制
      */
-    override fun stopRecord(): String? {
+    override fun stopRecord(result: MethodChannel.Result): String? {
         try {
-            stopStreaming()
+            stopStreaming(result)
             recordStatus = RecordStatus.Stop
             val path: String = mMuxer.getFilePath()
             mMuxer.stopRecording()
@@ -315,36 +303,29 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
     /**
      * 切换摄像头
      */
-    override fun swapCamera() {
+    override fun swapCamera(result: MethodChannel.Result) {
         this.resClient.swapCamera()
     }
 
     /**
      * 摄像头焦距 [0.0f,1.0f]
      */
-    override fun setZoomByPercent(targetPercent: Float) {
-        if (this.resClient != null) {
-            this.resClient.setZoomByPercent(targetPercent)
-        }
+    override fun setZoomByPercent(result: MethodChannel.Result,targetPercent: Float) {
+        this.resClient.setZoomByPercent(targetPercent)
     }
 
     /**
      * 摄像头开关闪光灯
      */
-    var flashMode:FlashMode = FlashMode.off
-    override fun toggleFlashLight() {
-        if(flashMode == FlashMode.off){
-            flashMode = FlashMode.always
-        }else{
-            flashMode = FlashMode.off
-        }
-        wsCamera!!.camera!!.setFlashMode(this.result,flashMode)
+    //var flashMode:FlashMode = FlashMode.off
+    override fun toggleFlashLight(result: MethodChannel.Result) {
+        this.resClient.toggleFlashLight()
     }
 
     /**
      * 推流过程中，重新设置帧率
      */
-    override fun reSetVideoFPS(fps: Int) {
+    override fun reSetVideoFPS(result: MethodChannel.Result,fps: Int) {
         if (this.resClient != null) {
             this.resClient.reSetVideoFPS(fps)
         }
@@ -353,7 +334,7 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
     /**
      * 推流过程中，重新设置码率
      */
-    override fun reSetVideoBitrate(type: String) {
+    override fun reSetVideoBitrate(result: MethodChannel.Result,type: String) {
         if (this.resClient != null) {
             this.resClient.reSetVideoBitrate(Bitrates.getBitrateByType(type))
         }
@@ -362,7 +343,7 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
     /**
      * 截图
      */
-    override fun takeScreenShot() {
+    override fun takeScreenShot(result: MethodChannel.Result) {
         if (this.resClient != null) {
             this.resClient.takeScreenShot{
                 //存储bitmap到本地data
@@ -378,7 +359,7 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
      * isEnablePreviewMirror  是否开启预览镜像
      *  isEnableStreamMirror   是否开启推流镜像
      */
-    override fun setMirror(isEnableMirror: Boolean):Int {
+    override fun setMirror(result: MethodChannel.Result,isEnableMirror: Boolean):Int {
         if (this.resClient != null) {
             this.resClient.setMirror(isEnableMirror, isEnableMirror, isEnableMirror)
             return 0;
@@ -390,7 +371,7 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
     /**
      * 设置滤镜
      */
-    override fun setHardVideoFilterByName(type: String) {
+    override fun setHardVideoFilterByName(result: MethodChannel.Result,type: String) {
         try {
             if (this.resClient != null) {
                 val filter:BaseHardVideoFilter = Filters.getFilterByType(type)

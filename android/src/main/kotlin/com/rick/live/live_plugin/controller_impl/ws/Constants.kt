@@ -11,6 +11,7 @@ class Bitrates{
         fun getBitrateByType(type:String): Int {
             return when(type){
                 "352x288" -> 352*288
+                "600x1024"->600 * 1024
                 else -> {
                     return 960*540
                 }

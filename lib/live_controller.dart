@@ -21,7 +21,7 @@ class LiveController {
     //return "$rmptServer${Utils.getRandomAlphaString(3)}/${Utils.getRandomAlphaDigitString(5)}";
   }
 
-  //
+  //init and startRecord
   Future<int> initLiveConfig() async {
     PermissionStatus status = await Permission.camera.request();
     if (status != PermissionStatus.granted) {
@@ -41,24 +41,26 @@ class LiveController {
     this.bitrate ??= 960 * 540;
     await getTextureId();
     Clipboard.setData(ClipboardData(text: this.rmptUrl));
-    Map<dynamic, dynamic> res = await _channel.invokeMethod("initLiveConfig", {
+    String ret = await _channel.invokeMethod("initLiveConfig", {
       "rmptUrl": this.rmptUrl,
       "fps": this.fps,
       "bitrate": this.bitrate,
     });
     await _getPreviewSize();
-    if (res != null) {
+    if (ret != null) {
       isInitialized = true;
     }
     return 0;
   }
 
+  double get aspectRatio => previewSize.width / previewSize.height;
   Future<Size> _getPreviewSize() async {
-    Map<String, dynamic> res = await _channel.invokeMethod("getPreviewSize");
+    Map<dynamic, dynamic> res = await _channel.invokeMethod("getPreviewSize");
     if (res == null) {
       throw FlutterError("getPreviewSize return null");
     }
-    previewSize = Size(res["width"], res["height"]);
+    previewSize = Size(
+        (res["width"] as int).toDouble(), (res["height"] as int).toDouble());
     return previewSize;
   }
 
@@ -69,15 +71,7 @@ class LiveController {
       textureId = res["textureId"];
       return textureId;
     }
-  }
-
-  void startRecord() async {
-    initLiveConfig();
-    int res = await _channel.invokeMethod("startRecord");
-    if (res != null && res != 0) {
-      throw FlutterError(
-          "startRecord fail with code $res,check the native code");
-    }
+    return null;
   }
 
   void pauseRecord() async {

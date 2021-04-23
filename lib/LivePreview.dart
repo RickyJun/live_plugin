@@ -1,6 +1,9 @@
 import 'dart:io';
+import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'live_controller.dart';
 
@@ -14,16 +17,35 @@ class LivePreview extends StatelessWidget {
             textureId: controller.textureId,
           )
         : Container();
-    if (Platform.isAndroid) {
-      preview = RotatedBox(
-        quarterTurns: 3,
-        child: preview,
-      );
-    }
+
     return AspectRatio(
-      aspectRatio:
-          controller.previewSize.width * 1.0 / controller.previewSize.height,
-      child: preview,
+      aspectRatio: 1 / controller.aspectRatio,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          RotatedBox(
+            quarterTurns: 0,
+            child: preview,
+          ),
+        ],
+      ),
     );
   }
+  // int _getQuarterTurns() {
+  //   int platformOffset = defaultTargetPlatform == TargetPlatform.iOS ? 1 : 0;
+  //   Map<DeviceOrientation, int> turns = {
+  //     DeviceOrientation.portraitUp: 0,
+  //     DeviceOrientation.landscapeLeft: 1,
+  //     DeviceOrientation.portraitDown: 2,
+  //     DeviceOrientation.landscapeRight: 3,
+  //   };
+  //   return turns[_getApplicableOrientation()] + platformOffset;
+  // }
+  // DeviceOrientation _getApplicableOrientation() {
+  //   return controller.isRecordingVideo
+  //       ? controller.recordingOrientation
+  //       : (controller.lockedCaptureOrientation ??
+  //           controller.deviceOrientation);
+  // }
+
 }

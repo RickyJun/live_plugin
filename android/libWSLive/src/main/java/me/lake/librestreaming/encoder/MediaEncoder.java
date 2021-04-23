@@ -236,7 +236,7 @@ public abstract class MediaEncoder implements Runnable {
         final ByteBuffer[] inputBuffers = mMediaCodec.getInputBuffers();
         while (mIsCapturing) {
 	        final int inputBufferIndex = mMediaCodec.dequeueInputBuffer(TIMEOUT_USEC);
-			Log.e(TAG, "inputBufferIndex: "+inputBufferIndex );
+			//Log.e(TAG, "inputBufferIndex: "+inputBufferIndex );
 			if (inputBufferIndex >= 0) {
 	            final ByteBuffer inputBuffer = inputBuffers[inputBufferIndex];
 	            inputBuffer.clear();
@@ -282,7 +282,7 @@ public abstract class MediaEncoder implements Runnable {
 LOOP:	while (mIsCapturing) {
 			// get encoded data with maximum timeout duration of TIMEOUT_USEC(=10[msec])
             encoderStatus = mMediaCodec.dequeueOutputBuffer(mBufferInfo, TIMEOUT_USEC);
-	Log.e(TAG, "encoderStatus: "+encoderStatus );
+	//Log.e(TAG, "encoderStatus: "+encoderStatus );
 	if (encoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
                 // wait 5 counts(=TIMEOUT_USEC x 5 = 50msec) until data/EOS come
                 if (!mIsEOS) {

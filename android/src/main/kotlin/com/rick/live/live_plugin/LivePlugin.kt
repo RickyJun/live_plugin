@@ -82,7 +82,7 @@ class LivePlugin: FlutterPlugin, MethodCallHandler {
       "getPlatformVersion" -> result.success("Android ${android.os.Build.VERSION.RELEASE}")
       //初始化推流控制器
       "initLiveConfig" -> {
-        liveController = WSLiveController(flutterSurfacetexture,this.flutterPluginBinding.binaryMessenger,result, this.flutterPluginBinding.applicationContext)
+        liveController = WSLiveController(flutterSurfacetexture,this.flutterPluginBinding.binaryMessenger, this.flutterPluginBinding.applicationContext)
         liveController.errorListener = object : ErrorListener {
           override fun onError(errorType:String, dec:String){
             var errorMsg:HashMap<String,Any> = HashMap();
@@ -99,8 +99,7 @@ class LivePlugin: FlutterPlugin, MethodCallHandler {
         streamAVOption.streamUrl = args!!["rmptUrl"].toString();
         streamAVOption.videoFramerate = args["fps"] as Int;
         streamAVOption.videoBitrate = args["bitrate"] as Int;
-        val res = liveController.init(activity,streamAVOption)
-        result.success(res)
+        liveController.init(activity,streamAVOption,result)
         liveController.javaClass.methods.forEach { method -> methods[method.name]=method }
       }
       "textureId" -> {
@@ -111,17 +110,10 @@ class LivePlugin: FlutterPlugin, MethodCallHandler {
       }
       else -> {
         if(methods.containsKey(call.method)){
-          var res:Any? = null
-          res = if(call.arguments == null){
-            methods[call.method]!!.invoke(liveController)
+          if(call.arguments == null){
+            methods[call.method]!!.invoke(liveController,result)
           }else{
-            methods[call.method]!!.invoke(liveController,call.arguments)
-          }
-
-          if(res != null){
-            result.success(res);
-          }else{
-            result.success("return null");
+            methods[call.method]!!.invoke(liveController,result,call.arguments)
           }
         }else{
           result.notImplemented()

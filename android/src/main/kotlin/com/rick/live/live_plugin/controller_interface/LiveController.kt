@@ -17,51 +17,50 @@ abstract class LiveController {
         e.printStackTrace();
         errorListener.onError("$method err$e","msg:${e.message.toString()},cause:${e.cause.toString()}")
     }
-    open fun init(context: Context?, avOption: StreamOption):Int {throw NotImplementedError("init had not impl")}
-    open fun getPreviewSize(){throw NotImplementedError("getPreviewSize had not impl")}
-    open fun startRecord(){throw NotImplementedError("getPreviewSize had not impl")}
-    open fun close() {}
+    open fun init(context: Context?, avOption: StreamOption,result: MethodChannel.Result) {}
+    open fun getPreviewSize(result: MethodChannel.Result){}
+    open fun close(result: MethodChannel.Result) {}
     //获取textureId
     open var textureId:Long? = null
         get() = 0
-    open fun startStreaming(rtmpUrl: String?) {}
-    open fun stopStreaming() {}
-    open fun pauseRecord(){}
-    open fun resumeRecord(){}
-    open fun stopRecord(): String? {return null}
+    open fun startStreaming(result: MethodChannel.Result,rtmpUrl: String?) {}
+    open fun stopStreaming(result: MethodChannel.Result) {}
+    open fun pauseRecord(result: MethodChannel.Result){}
+    open fun resumeRecord(result: MethodChannel.Result){}
+    open fun stopRecord(result: MethodChannel.Result): String? {return null}
      /**
      * 切换摄像头
      */
-    open fun swapCamera() {}
+    open fun swapCamera(result: MethodChannel.Result) {}
     /**
      * 摄像头焦距 [0.0f,1.0f]
      */
-    open fun setZoomByPercent(targetPercent: Float) {}
+    open fun setZoomByPercent(result: MethodChannel.Result,targetPercent: Float) {}
     /**
      * 摄像头开关闪光灯
      */
-    open fun toggleFlashLight() {}
+    open fun toggleFlashLight(result: MethodChannel.Result) {}
     /**
      * 推流过程中，重新设置帧率
      */
-    open fun reSetVideoFPS(fps: Int) {}
+    open fun reSetVideoFPS(result: MethodChannel.Result,fps: Int) {}
     /**
      * 推流过程中，重新设置码率
      */
-    open fun reSetVideoBitrate(type: String) {}
+    open fun reSetVideoBitrate(result: MethodChannel.Result,type: String) {}
     /**
      * 截图
      */
-    open fun takeScreenShot() {}
+    open fun takeScreenShot(result: MethodChannel.Result) {}
     /**
      * 镜像
      * @param isEnableMirror   是否启用镜像功能 总开关
      * isEnablePreviewMirror  是否开启预览镜像
      *  isEnableStreamMirror   是否开启推流镜像
      */
-    open fun setMirror(isEnableMirror: Boolean):Int {return -1}
+    open fun setMirror(result: MethodChannel.Result,isEnableMirror: Boolean):Int {return -1}
     /**
      * 设置滤镜
      */
-    open fun setHardVideoFilterByName(type: String) {}
+    open fun setHardVideoFilterByName(result: MethodChannel.Result,type: String) {}
 }
