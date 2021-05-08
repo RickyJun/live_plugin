@@ -7,12 +7,16 @@
 
 #import <Foundation/Foundation.h>
 #import <Flutter/Flutter.h>
-#import "GPUImage/Headers/GPUImageOutput.h"
-#import "GPUImage/Headers/GPUImageVideoCamera.h"
-#import "GPUImage/Headers/GPUImageMovieWriterEx.h"
-#import "RtmpLivePushSDK/VideoCore/api/iOS/VCRtmpSession.h"
+#import <GPUImageVideoCamera.h>
+#import <GPUImageMovieWriterEx.h>
+#import <videocore/api/iOS/VCRtmpSession.h>
 #import "Constants.h"
 
+typedef NS_ENUM(NSInteger,RecordStatus) {
+    RecordStatusStop,
+    RecordStatusRecording,
+    RecordStatusPause
+};
 @interface LiveContaoller : NSObject<FlutterTexture,GPUImageInput,PixelBufferDelegate>
 @property(readonly) RecordStatus recordStatus;
 //最新帧可用回调
@@ -33,29 +37,29 @@
 @property(nonatomic, strong) void(^onError)(NSString *errorType,NSString *dec);
 - (instancetype)initWithOption:(CGSize)videoSize fps:(CGFloat)fps bitrate:(CGFloat)bitrate rmptUrl:(NSString*)rmptUrl;
 
-- (NSInteger)recordStatus;
+- (void)recordStatus:(FlutterResult)result;
 //设置/切换滤镜
-- (void)setHardVideoFilterByName:(NSString *)type;
+- (void)setHardVideoFilterByName:(FlutterResult)result type:(NSString *)type;
 //暂停
-- (void)pauseRecord;
+- (void)pauseRecord:(FlutterResult)result;
 //恢复
-- (void)resumeRecord;
+- (void)resumeRecord:(FlutterResult)result;
 //终止录像
-- (NSString*)stopRecord;
+- (NSString*)stopRecord:(FlutterResult)result;
 //切换摄像头
-- (void)swapCamera;
+- (void)swapCamera:(FlutterResult)result;
 //摄像头焦距 [0.0f,1.0f]
-- (void)setZoomByPercent:(CGFloat)targetPercent;
+- (void)setZoomByPercent:(FlutterResult)result targetPercent:(CGFloat)targetPercent;
 //摄像头开关闪光灯
-- (void)toggleFlashLight;
+- (void)toggleFlashLight:(FlutterResult)result;
 // 推流过程中，重新设置帧率
-- (void)reSetVideoFPS:(int32_t)fps;
+- (void)reSetVideoFPS:(FlutterResult)result fps:(int32_t)fps;
 //推流过程中，重新设置码率
-- (void)reSetVideoBitrate:(NSString*)type;
+- (void)reSetVideoBitrate:(FlutterResult)result type:(NSString*)type;
 //截图
 - (void)takeScreenShot:(FlutterResult)result;
 //镜像
-- (void)setMirror:(BOOL)isEnableMirror;
+- (void)setMirror:(FlutterResult)result isEnableMirror:(BOOL)isEnableMirror;
 
 @end
 

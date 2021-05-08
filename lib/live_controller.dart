@@ -46,17 +46,16 @@ class LiveController {
     this.bitrate ??= 960 * 540;
     this.videoHeight ??= 720;
     this.videoWidth ??= 1280;
-    await getTextureId();
     Clipboard.setData(ClipboardData(text: this.rmptUrl));
-    String ret = await _channel.invokeMethod("initLiveConfig", {
+    dynamic ret = await _channel.invokeMethod("initLiveConfig", {
       "rmptUrl": this.rmptUrl,
       "fps": this.fps,
       "bitrate": this.bitrate,
       "videoHeight": videoHeight,
       "videoWidth": videoWidth
     });
-    // await _getPreviewSize();
-    if (ret != null) {
+    if (ret != null && ret is Map) {
+      textureId = ret["textureId"];
       isInitialized = true;
     }
     return 0;
@@ -74,14 +73,6 @@ class LiveController {
   // }
 
   int textureId;
-  Future<int> getTextureId() async {
-    Map<dynamic, dynamic> res = await _channel.invokeMethod("textureId");
-    if (res != null) {
-      textureId = res["textureId"];
-      return textureId;
-    }
-    return null;
-  }
 
   void pauseRecord() async {
     await _channel.invokeMethod("pauseRecord");

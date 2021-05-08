@@ -62,7 +62,6 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
             surfaceTexture!!.setDefaultBufferSize(avOption.previewWidth,avOption.previewHeight)
             addListenerAndFilter()
             startRecord(result)
-            result.success("ok")
         }catch (e:Exception){
             getErrorMsg(e,"init")
             result.success("error")

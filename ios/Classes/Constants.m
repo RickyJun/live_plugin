@@ -4,10 +4,8 @@
 //
 //  Created by wenwenjun on 2021/3/24.
 //
+#import "Constants.h"
 
-#import "Filters.h"
-#import "GPUImage/Headers/GPUImageOutput.h"
-#import "GPUImage/Headers/GPUImageBeautifyFilter.h"
 @interface Filters()
 @end
 @implementation Filters
@@ -29,7 +27,7 @@
     if([type isEqualToString:@"352x288"]){
         return AVCaptureSessionPreset352x288;
     }else{
-        return AVCaptureSessionPreset960x540;
+        return AVCaptureSessionPreset1280x720;
     }
 }
 

@@ -6,9 +6,8 @@
 //
 
 #import <Foundation/Foundation.h>
-
-
-
+#import <GPUImageOutput.h>
+#import <GPUImageBeautifyFilter.h>
 @interface Filters : NSObject
 + (GPUImageOutput<GPUImageInput>*)getFilterByType:(NSString *)type;
 @end

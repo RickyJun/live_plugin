@@ -19,11 +19,12 @@
 FlutterMethodChannel *channel;
 LivePlugin *instance;
 LiveContaoller *liveController;
+int64_t textureId;
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
     instance = [[LivePlugin alloc] init];
     instance.registrarTextures = registrar.textures;
-    channel = [FlutterMethodChannel methodChannelWithName:@"live_plugin" binaryMessenger:[registrar messenger]];
+    channel = [FlutterMethodChannel methodChannelWithName:@"live_rtmp" binaryMessenger:[registrar messenger]];
     [registrar addMethodCallDelegate:instance channel:channel];
     //[SwiftLivePlugin registerWithRegistrar:registrar];
 }
@@ -32,8 +33,11 @@ LiveContaoller *liveController;
     if([call.method isEqualToString:@"initLiveConfig"]){
         @try {
             NSDictionary *args = call.arguments;
-            liveController = [[LiveContaoller alloc] initWithOption:CGSizeMake([[args objectForKey:@"videoWidth"] floatValue],[[args objectForKey:@"videoHeight"] floatValue]) fps:[[args objectForKey:@"fps"] floatValue] bitrate:[[args objectForKey:@"bitrate"] floatValue]];
-            liveController.textureId = [_registrarTextures registerTexture:liveController];
+            CGFloat videoWidth = [[args valueForKey:@"videoWidth"] floatValue];
+            NSString *rtmpUrl = [args valueForKey:@"rmptUrl"];
+            liveController = [[LiveContaoller alloc] initWithOption:CGSizeMake(videoWidth,[[args valueForKey:@"videoHeight"] floatValue]) fps:[[args valueForKey:@"fps"] floatValue] bitrate:[[args valueForKey:@"bitrate"] floatValue] rmptUrl:rtmpUrl];
+            textureId = [_registrarTextures registerTexture:liveController];
+            liveController.textureId = textureId;
             liveController.onFrameAvailable = ^{
                 [self->_registrarTextures textureFrameAvailable:liveController.textureId];
             };
@@ -43,28 +47,23 @@ LiveContaoller *liveController;
                 [errorMsg setValue:@"dec" forKey:dec];
                 [channel invokeMethod:@"error" arguments:errorMsg];
             };
-            result(@"ok!");
+            NSDictionary *res = [[NSDictionary alloc] init];
+            [res setValue:@(textureId) forKey:@"textureId"];
+            result(res);
         } @catch (NSException *exception) {
             result(@"error!");
-        } @finally {
-            liveController = nil;
         }
-        
-    
-    }else if([call.method isEqual:@"takeScreenShot"]){
-        [liveController takeScreenShot:result];
     }else if([call.method isEqual:@"close"]){
         liveController = nil;
-    }else if([call.method isEqual:@"textureId"]){
-        if(liveController.textureId){
-            NSDictionary *res = [[NSDictionary alloc] init];
-            [res setValue:@(liveController.textureId) forKey:@"textureId"];
-            result(res);
-        }
     }else{
         SEL method = NSSelectorFromString(call.method);
         if(method != nil && [liveController respondsToSelector:method]){
-            SuppressPerformSelectorLeakWarning([liveController performSelector:method withObject:call.arguments]);
+            if(call.arguments == nil){
+                SuppressPerformSelectorLeakWarning([liveController performSelector:method withObject:result]);
+            }else{
+                SuppressPerformSelectorLeakWarning([liveController performSelector:method withObject:result withObject:call.arguments]);
+            }
+            
         }
     }
 }

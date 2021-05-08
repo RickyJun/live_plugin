@@ -1,0 +1,23 @@
+/*=============================================================================
+    Copyright (c) 2001-2007 Joel de Guzman
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying 
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+==============================================================================*/
+#ifndef PHOENIX_CORE_HPP
+#define PHOENIX_CORE_HPP
+
+#include "version.hpp"
+#include "limits.hpp"
+#include "basic_environment.hpp"
+#include "actor.hpp"
+#include "as_actor.hpp"
+#include "is_actor.hpp"
+#include "argument.hpp"
+#include "value.hpp"
+#include "reference.hpp"
+#include "compose.hpp"
+#include "composite.hpp"
+#include "nothing.hpp"
+
+#endif

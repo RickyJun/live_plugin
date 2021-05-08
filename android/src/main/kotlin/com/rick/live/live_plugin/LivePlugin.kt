@@ -82,6 +82,7 @@ class LivePlugin: FlutterPlugin, MethodCallHandler {
       "getPlatformVersion" -> result.success("Android ${android.os.Build.VERSION.RELEASE}")
       //初始化推流控制器
       "initLiveConfig" -> {
+        flutterSurfacetexture = this.flutterPluginBinding.textureRegistry.createSurfaceTexture()
         liveController = WSLiveController(flutterSurfacetexture,this.flutterPluginBinding.binaryMessenger, this.flutterPluginBinding.applicationContext)
         liveController.errorListener = object : ErrorListener {
           override fun onError(errorType:String, dec:String){
@@ -97,20 +98,17 @@ class LivePlugin: FlutterPlugin, MethodCallHandler {
           args = call.arguments as Map<*, *>
         }
         streamAVOption.previewHeight = args!!["videoHeight"] as Int;
-        streamAVOption.previewWidth = args!!["videoWidth"] as Int;
-        streamAVOption.videoHeight = args!!["videoHeight"] as Int;
-        streamAVOption.videoWidth = args!!["videoWidth"] as Int;
-        streamAVOption.streamUrl = args!!["rmptUrl"].toString();
+        streamAVOption.previewWidth = args["videoWidth"] as Int;
+        streamAVOption.videoHeight = args["videoHeight"] as Int;
+        streamAVOption.videoWidth = args["videoWidth"] as Int;
+        streamAVOption.streamUrl = args["rmptUrl"].toString();
         streamAVOption.videoFramerate = args["fps"] as Int;
         streamAVOption.videoBitrate = args["bitrate"] as Int;
         liveController.init(activity,streamAVOption,result)
-        liveController.javaClass.methods.forEach { method -> methods[method.name]=method }
-      }
-      "textureId" -> {
-        flutterSurfacetexture = this.flutterPluginBinding.textureRegistry.createSurfaceTexture()
         val res:MutableMap<String,Any?> = HashMap<String,Any?>()
         res["textureId"] = flutterSurfacetexture.id();
         result.success(res)
+        liveController.javaClass.methods.forEach { method -> methods[method.name]=method }
       }
       else -> {
         if(methods.containsKey(call.method)){

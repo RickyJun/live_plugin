@@ -1,0 +1,112 @@
+//
+// asio.hpp
+// ~~~~~~~~
+//
+// Copyright (c) 2003-2012 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
+//  See www.boost.org/libs/asio for documentation.
+//
+
+#ifndef BOOST_ASIO_HPP
+#define BOOST_ASIO_HPP
+
+#if defined(_MSC_VER) && (_MSC_VER >= 1200)
+# pragma once
+#endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
+
+#include "basic_datagram_socket.hpp"
+#include "basic_deadline_timer.hpp"
+#include "basic_io_object.hpp"
+#include "basic_raw_socket.hpp"
+#include "basic_seq_packet_socket.hpp"
+#include "basic_serial_port.hpp"
+#include "basic_signal_set.hpp"
+#include "basic_socket_acceptor.hpp"
+#include "basic_socket_iostream.hpp"
+#include "basic_socket_streambuf.hpp"
+#include "basic_stream_socket.hpp"
+#include "basic_streambuf.hpp"
+#include "basic_waitable_timer.hpp"
+#include "buffer.hpp"
+#include "buffered_read_stream_fwd.hpp"
+#include "buffered_read_stream.hpp"
+#include "buffered_stream_fwd.hpp"
+#include "buffered_stream.hpp"
+#include "buffered_write_stream_fwd.hpp"
+#include "buffered_write_stream.hpp"
+#include "buffers_iterator.hpp"
+#include "completion_condition.hpp"
+#include "connect.hpp"
+#include "datagram_socket_service.hpp"
+#include "deadline_timer_service.hpp"
+#include "deadline_timer.hpp"
+#include "error.hpp"
+#include "handler_alloc_hook.hpp"
+#include "handler_invoke_hook.hpp"
+#include "io_service.hpp"
+#include "address.hpp"
+#include "address_v4.hpp"
+#include "address_v6.hpp"
+#include "basic_endpoint.hpp"
+#include "basic_resolver.hpp"
+#include "basic_resolver_entry.hpp"
+#include "basic_resolver_iterator.hpp"
+#include "basic_resolver_query.hpp"
+#include "host_name.hpp"
+#include "icmp.hpp"
+#include "multicast.hpp"
+#include "resolver_query_base.hpp"
+#include "resolver_service.hpp"
+#include "tcp.hpp"
+#include "udp.hpp"
+#include "unicast.hpp"
+#include "v6_only.hpp"
+#include "is_read_buffered.hpp"
+#include "is_write_buffered.hpp"
+#include "basic_endpoint.hpp"
+#include "connect_pair.hpp"
+#include "datagram_protocol.hpp"
+#include "stream_protocol.hpp"
+#include "placeholders.hpp"
+#include "basic_descriptor.hpp"
+#include "basic_stream_descriptor.hpp"
+#include "descriptor_base.hpp"
+#include "stream_descriptor.hpp"
+#include "stream_descriptor_service.hpp"
+#include "raw_socket_service.hpp"
+#include "read.hpp"
+#include "read_at.hpp"
+#include "read_until.hpp"
+#include "seq_packet_socket_service.hpp"
+#include "serial_port.hpp"
+#include "serial_port_base.hpp"
+#include "serial_port_service.hpp"
+#include "signal_set.hpp"
+#include "signal_set_service.hpp"
+#include "socket_acceptor_service.hpp"
+#include "socket_base.hpp"
+#include "strand.hpp"
+#include "stream_socket_service.hpp"
+#include "streambuf.hpp"
+#include "time_traits.hpp"
+#include "version.hpp"
+#include "wait_traits.hpp"
+#include "waitable_timer_service.hpp"
+#include "basic_handle.hpp"
+#include "basic_object_handle.hpp"
+#include "basic_random_access_handle.hpp"
+#include "basic_stream_handle.hpp"
+#include "object_handle.hpp"
+#include "object_handle_service.hpp"
+#include "overlapped_ptr.hpp"
+#include "random_access_handle.hpp"
+#include "random_access_handle_service.hpp"
+#include "stream_handle.hpp"
+#include "stream_handle_service.hpp"
+#include "write.hpp"
+#include "write_at.hpp"
+
+#endif // BOOST_ASIO_HPP

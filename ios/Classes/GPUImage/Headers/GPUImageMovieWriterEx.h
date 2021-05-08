@@ -1,16 +1,14 @@
-#import <Foundation/Foundation.h>
-#import <AVFoundation/AVFoundation.h>
-#import "GPUImageContext.h"
+#import "GPUImageMovieWriter.h"
 
 extern NSString *const kGPUImageColorSwizzlingFragmentShaderString;
 
-@protocol GPUImageMovieWriterDelegate <NSObject>
-
-@optional
-- (void)movieRecordingCompleted;
-- (void)movieRecordingFailedWithError:(NSError*)error;
-
-@end
+//@protocol GPUImageMovieWriterDelegate <NSObject>
+//
+//@optional
+//- (void)movieRecordingCompleted;
+//- (void)movieRecordingFailedWithError:(NSError*)error;
+//
+//@end
 
 @interface GPUImageMovieWriterEx : NSObject <GPUImageInput>
 {
