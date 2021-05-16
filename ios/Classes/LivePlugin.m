@@ -47,7 +47,7 @@ int64_t textureId;
                 [errorMsg setValue:@"dec" forKey:dec];
                 [channel invokeMethod:@"error" arguments:errorMsg];
             };
-            NSDictionary *res = [[NSDictionary alloc] init];
+            NSDictionary *res = [[NSMutableDictionary alloc] init];
             [res setValue:@(textureId) forKey:@"textureId"];
             result(res);
         } @catch (NSException *exception) {

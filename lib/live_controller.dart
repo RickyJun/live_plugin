@@ -57,8 +57,9 @@ class LiveController {
     if (ret != null && ret is Map) {
       textureId = ret["textureId"];
       isInitialized = true;
+      return 0;
     }
-    return 0;
+    return -1;
   }
 
   double get aspectRatio => videoWidth / videoHeight;

@@ -10,6 +10,10 @@
 @interface LiveContaoller()
 @property NSString *pathToMovie;
 @property NSString *rmptUrl;
+//最新一帧数据
+@property CVPixelBufferRef volatile latestPixelBuffer;
+@property CMTime previousFrameTime;
+@property GPUImageFramebuffer *lastNewInputFramebuffer;
 - (void)getErrorMsg:(NSException*)e method:(NSString*)method;
 @end
 
@@ -27,6 +31,8 @@ fps:(CGFloat)fps
     self = [super init];
     if (self) {
         @try {
+            _previousFrameTime = kCMTimeNegativeInfinity;
+            
             self.rmptUrl = rmptUrl;
             NSString *fileName = [rmptUrl substringFromIndex:[rmptUrl rangeOfString:@"/" options:NSBackwardsSearch].location+1];
             //初始化session
@@ -65,9 +71,7 @@ fps:(CGFloat)fps
 }
 - (void)dealloc
 {
-    if(_latestPixelBuffer != nil){
-        CFRelease(_latestPixelBuffer);
-    }
+    
 }
 #pragma mark--视频基础控制
 - (void)startRecord{
@@ -186,12 +190,21 @@ fps:(CGFloat)fps
 }
 #pragma mark--FlutterTexture 方法
 - (CVPixelBufferRef _Nullable)copyPixelBuffer {
-    CVPixelBufferRef pixelBufferRef = _latestPixelBuffer;
+    //CVPixelBufferRef pixelBufferRef = _latestPixelBuffer;
     //并发处理，线程安全
-    while (!OSAtomicCompareAndSwapPtrBarrier(pixelBufferRef, nil, (void**)&_latestPixelBuffer)) {
-        pixelBufferRef = _latestPixelBuffer;
+//    while (!OSAtomicCompareAndSwapPtrBarrier(pixelBufferRef, nil, (void**)&_latestPixelBuffer)) {
+//        pixelBufferRef = _latestPixelBuffer;
+//    }
+  //  [_lastNewInputFramebuffer unlock];
+    //printf(pixelBufferRef);
+    [_lastNewInputFramebuffer unlock];
+    if(_latestPixelBuffer != nil){
+        return _latestPixelBuffer;
+    }else{
+        return _latestPixelBuffer;
     }
-    return pixelBufferRef;
+    
+  //  return _latestPixelBuffer.pixelBuffer;
 }
 #pragma mark--GPUImageInput 方法
 - (BOOL)enabled {
@@ -207,11 +220,25 @@ fps:(CGFloat)fps
 }
 
 - (void)newFrameReadyAtTime:(CMTime)frameTime atIndex:(NSInteger)textureIndex {
+//    if (_recordStatus != RecordStatusRecording)
+//    {
+//        [_latestPixelBuffer unlock];
+//        return;
+//    }
+    if ( (CMTIME_IS_INVALID(frameTime)) || (CMTIME_COMPARE_INLINE(frameTime, ==, _previousFrameTime)) || (CMTIME_IS_INDEFINITE(frameTime)) )
+    {
+        [_lastNewInputFramebuffer unlock];
+        return;
+    }
+    if (_onFrameAvailable) {
+        _onFrameAvailable();
+    }
+    _previousFrameTime = frameTime;
     
 }
 
 - (NSInteger)nextAvailableTextureIndex {
-    return 1;
+    return 0;
 }
 
 - (void)setCurrentlyReceivingMonochromeInput:(BOOL)newValue {
@@ -219,20 +246,21 @@ fps:(CGFloat)fps
 }
 //preview输出
 - (void)setInputFramebuffer:(GPUImageFramebuffer *)newInputFramebuffer atIndex:(NSInteger)textureIndex {
+   // [newInputFramebuffer lock];
+ //   _lastNewInputFramebuffer = newInputFramebuffer;
+    _lastNewInputFramebuffer = newInputFramebuffer;
+    [_lastNewInputFramebuffer lock];
     CVPixelBufferRef newBuffer = newInputFramebuffer.pixelBuffer;
-    CVPixelBufferRef old = _latestPixelBuffer;
-    while (!OSAtomicCompareAndSwapPtrBarrier(old, newBuffer, (void **)&_latestPixelBuffer)) {
-        old = _latestPixelBuffer;
+    if(newBuffer == nil){
+        return;
     }
-//    if (old != nil) {
-//        CFRelease(old);
+    _latestPixelBuffer = newBuffer;
+    
+//    CVPixelBufferRef old = _latestPixelBuffer;
+//    while (!OSAtomicCompareAndSwapPtrBarrier(old, newBuffer, (void **)&_latestPixelBuffer)) {
+//        old = _latestPixelBuffer;
 //    }
-//    if(newBuffer != nil){
-//        CFRelease(newBuffer);
-//    }
-    if (_onFrameAvailable) {
-        _onFrameAvailable();
-    }
+
 }
 
 - (void)setInputRotation:(GPUImageRotationMode)newInputRotation atIndex:(NSInteger)textureIndex {
@@ -244,11 +272,11 @@ fps:(CGFloat)fps
 }
 
 - (BOOL)shouldIgnoreUpdatesToThisTarget {
-    return false;
+    return NO;
 }
 
 - (BOOL)wantsMonochromeInput {
-    return false;
+    return NO;
 }
 
 @end
