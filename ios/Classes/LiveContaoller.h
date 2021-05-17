@@ -18,6 +18,9 @@ typedef NS_ENUM(NSInteger,RecordStatus) {
     RecordStatusPause
 };
 @interface LiveContaoller : NSObject<FlutterTexture,GPUImageInput,PixelBufferDelegate>
+
+//最新一帧数据
+@property CVPixelBufferRef volatile latestPixelBuffer;
 @property(readonly) RecordStatus recordStatus;
 //最新帧可用回调
 @property(nonatomic, copy) void (^onFrameAvailable)(void);
@@ -30,12 +33,11 @@ typedef NS_ENUM(NSInteger,RecordStatus) {
 @property (nonatomic, strong) GPUImageMovieWriterEx *movieWriter;
 //推流seesion
 @property (nonatomic, strong) VCRtmpSession* rtmpSession;
-
-
 @property(assign, nonatomic) int64_t textureId;
 @property(nonatomic, strong) void(^onError)(NSString *errorType,NSString *dec);
-- (instancetype)initWithOption:(CGSize)videoSize fps:(CGFloat)fps bitrate:(CGFloat)bitrate rmptUrl:(NSString*)rmptUrl;
+- (instancetype)initWithOption:(CGSize)videoSize fps:(CGFloat)fps bitrate:(CGFloat)bitrate rmptUrl:(NSString*)rmptUrl registry:(NSObject<FlutterTextureRegistry>*)registry;
 
+- (void)startRecord:(FlutterResult)result;
 - (void)recordStatus:(FlutterResult)result;
 //设置/切换滤镜
 - (void)setHardVideoFilterByName:(FlutterResult)result type:(NSString *)type;

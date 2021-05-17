@@ -19,10 +19,10 @@
 FlutterMethodChannel *channel;
 LivePlugin *instance;
 LiveContaoller *liveController;
-int64_t textureId;
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
     instance = [[LivePlugin alloc] init];
+   
     instance.registrarTextures = registrar.textures;
     channel = [FlutterMethodChannel methodChannelWithName:@"live_rtmp" binaryMessenger:[registrar messenger]];
     [registrar addMethodCallDelegate:instance channel:channel];
@@ -35,12 +35,8 @@ int64_t textureId;
             NSDictionary *args = call.arguments;
             CGFloat videoWidth = [[args valueForKey:@"videoWidth"] floatValue];
             NSString *rtmpUrl = [args valueForKey:@"rmptUrl"];
-            liveController = [[LiveContaoller alloc] initWithOption:CGSizeMake(videoWidth,[[args valueForKey:@"videoHeight"] floatValue]) fps:[[args valueForKey:@"fps"] floatValue] bitrate:[[args valueForKey:@"bitrate"] floatValue] rmptUrl:rtmpUrl];
-            textureId = [_registrarTextures registerTexture:liveController];
-            liveController.textureId = textureId;
-            liveController.onFrameAvailable = ^{
-                [self->_registrarTextures textureFrameAvailable:liveController.textureId];
-            };
+            liveController = [[LiveContaoller alloc] initWithOption:CGSizeMake(videoWidth,[[args valueForKey:@"videoHeight"] floatValue]) fps:[[args valueForKey:@"fps"] floatValue] bitrate:[[args valueForKey:@"bitrate"] floatValue] rmptUrl:rtmpUrl registry:self->_registrarTextures];
+            [liveController startRecord:result];
             liveController.onError = ^(NSString *errorType,NSString *dec){
                 NSDictionary *errorMsg = [[NSDictionary alloc] init];
                 [errorMsg setValue:@"errorType" forKey:errorType];
@@ -48,7 +44,7 @@ int64_t textureId;
                 [channel invokeMethod:@"error" arguments:errorMsg];
             };
             NSDictionary *res = [[NSMutableDictionary alloc] init];
-            [res setValue:@(textureId) forKey:@"textureId"];
+            [res setValue:@(liveController.textureId) forKey:@"textureId"];
             result(res);
         } @catch (NSException *exception) {
             result(@"error!");
