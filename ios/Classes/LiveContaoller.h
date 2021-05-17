@@ -17,10 +17,11 @@ typedef NS_ENUM(NSInteger,RecordStatus) {
     RecordStatusRecording,
     RecordStatusPause
 };
-@interface LiveContaoller : NSObject<FlutterTexture,GPUImageInput,PixelBufferDelegate>
+@interface LiveContaoller : NSObject<FlutterTexture,PixelBufferDelegate>
 
 //最新一帧数据
-@property CVPixelBufferRef volatile latestPixelBuffer;
+@property (nonatomic) CVPixelBufferRef volatile latestPixelBuffer;
+
 @property(readonly) RecordStatus recordStatus;
 //最新帧可用回调
 @property(nonatomic, copy) void (^onFrameAvailable)(void);
@@ -62,6 +63,7 @@ typedef NS_ENUM(NSInteger,RecordStatus) {
 //镜像
 - (void)setMirror:(FlutterResult)result isEnableMirror:(BOOL)isEnableMirror;
 
+- (void)setLatestPixelBuffer:(CVPixelBufferRef)latestPixelBuffer;
 @end
 
 

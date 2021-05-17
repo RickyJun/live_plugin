@@ -13,12 +13,8 @@
 @property NSString *pathToMovie;
 @property NSString *rmptUrl;
 @property CVPixelBufferRef pixelBuffer;
-@property(readonly, nonatomic) CADisplayLink* displayLink;
 @property NSObject<FlutterTextureRegistry>* registry;
 @property (nonatomic, strong) GPUImageViewFlutterTexture *filterView;
-
-@property CMTime previousFrameTime;
-@property GPUImageFramebuffer *lastNewInputFramebuffer;
 - (void)getErrorMsg:(NSException*)e method:(NSString*)method;
 @end
 
@@ -34,12 +30,9 @@ fps:(CGFloat)fps
     self = [super init];
     if (self) {
         @try {
-            _pixelBuffer = nil;
-            _previousFrameTime = kCMTimeNegativeInfinity;
             _registry = registry;
             self.filterView = [[GPUImageViewFlutterTexture alloc] initWithFrame:CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.width, [UIScreen mainScreen].bounds.size.height) registry:registry texture:self];
             self.filterView.backgroundColor = [UIColor lightGrayColor];
-            
             self.rmptUrl = rmptUrl;
             NSString *fileName = [rmptUrl substringFromIndex:[rmptUrl rangeOfString:@"/" options:NSBackwardsSearch].location+1];
             //初始化session
@@ -57,7 +50,9 @@ fps:(CGFloat)fps
             previewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
             previewLayer.frame = [UIScreen mainScreen].bounds;
             //初始化编码器
-            _pathToMovie = [NSHomeDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"Documents%@movie.m4v",fileName]];
+            NSString *path = [NSString stringWithFormat:@"Documents/Movie%@%d.m4v",fileName,6];
+            _pathToMovie = [NSHomeDirectory() stringByAppendingPathComponent:path];
+            //_pathToMovie = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/Movie.m4v"];
             unlink([_pathToMovie UTF8String]); // If a file already exists, AVAssetWriter won't let you record new frames, so delete the old movie
             NSURL *movieURL = [NSURL fileURLWithPath:_pathToMovie];
             //self.movieWriter = [[GPUImageMovieWriterEx alloc] initWithMovieURL:movieURL size:CGSizeMake(360.0, 640.0)];
@@ -79,26 +74,22 @@ fps:(CGFloat)fps
 {
     
 }
-- (void)updatePlayingState {
- // _displayLink.paused = (_recordStatus != RecordStatusRecording);
-}
 #pragma mark--视频基础控制
 - (void)startRecord:(FlutterResult)result{
     //初始化_displayLink
     _textureId = self.filterView.textureId;
-//    _frameUpdater = [[FLTFrameUpdater alloc] initWithRegistry:_registry];
-//    _frameUpdater.textureId = _textureId;
-//    _displayLink = [CADisplayLink displayLinkWithTarget:_frameUpdater
-//                                               selector:@selector(onDisplayLink:)];
-//    [_displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
-//    _displayLink.paused = YES;
     //开始录制
-    [self.rtmpSession startRtmpSession:self.rmptUrl];
-    [self.videoCamera startCameraCapture];
- //   [self.movieWriter startRecording];
-    _recordStatus = RecordStatusRecording;
-    [self updatePlayingState];
-  
+    @try {
+        [self.rtmpSession startRtmpSession:self.rmptUrl];
+        [self.videoCamera startCameraCapture];
+        [self.movieWriter startRecording];
+        _recordStatus = RecordStatusRecording;
+    } @catch (NSException *exception) {
+        NSLog(@"%@", exception.reason);
+    } @finally {
+        
+    }
+    
 }
 - (void)recordStatus:(FlutterResult)result{
     
@@ -110,8 +101,8 @@ fps:(CGFloat)fps
         return;
     }
     @try {
-        if([[_videoCamera targets] containsObject:self]){
-            [_videoCamera removeTarget:self];
+        if([[_videoCamera targets] containsObject:self.filterView]){
+            [_videoCamera removeTarget:self.filterView];
         }
         if(_filter != nil){
             [_filter removeAllTargets];
@@ -119,7 +110,7 @@ fps:(CGFloat)fps
         }
         _filter = [Filters getFilterByType:type];
         if(_filter != nil){
-            [_filter addTarget:self];
+            [_filter addTarget:self.filterView];
             [_videoCamera addTarget:_filter];
         }
     } @catch (NSException *exception) {
@@ -134,10 +125,9 @@ fps:(CGFloat)fps
         [self.rtmpSession endRtmpSession];
         [self.videoCamera stopCameraCapture];
         [self.movieWriter cancelRecording];
-        [self.videoCamera removeTarget:self];
+        [self.videoCamera removeTarget:self.filterView];
         [self.videoCamera removeTarget:self.movieWriter];
         _recordStatus = RecordStatusStop;
-        [self updatePlayingState];
         return _pathToMovie;
     } @catch (NSException *exception) {
         [self getErrorMsg:exception method:@"stopRecord"];
@@ -153,12 +143,11 @@ fps:(CGFloat)fps
 - (void)pauseRecord:(FlutterResult)result{
     [self.videoCamera pauseCameraCapture];
     _recordStatus = RecordStatusPause;
-    [self updatePlayingState];
+
 }
 - (void)resumeRecord:(FlutterResult)result{
     [self.videoCamera resumeCameraCapture];
     _recordStatus = RecordStatusRecording;
-    [self updatePlayingState];
 }
 #pragma mark--视频其他控制
 //摄像头焦距 [0.0f,1.0f]
@@ -177,6 +166,12 @@ fps:(CGFloat)fps
 //推流过程中，重新设置码率
 - (void)reSetVideoBitrate:(FlutterResult)result  type:(NSString*)type{
     [self.videoCamera.captureSession setSessionPreset:[Bitrates getBitrateByType:type]];
+}
+- (void)setLatestPixelBuffer:(CVPixelBufferRef)latestPixelBuffer{
+    CVPixelBufferRef old = _latestPixelBuffer;
+    while (!OSAtomicCompareAndSwapPtrBarrier(old, latestPixelBuffer, (void**)&_latestPixelBuffer)) {
+        old = _latestPixelBuffer;
+    }
 }
 //截图
 - (void)takeScreenShot:(FlutterResult)result{
@@ -207,109 +202,24 @@ fps:(CGFloat)fps
 //    int iFormatType = CVPixelBufferGetPixelFormatType(pixelFrameBuffer);
 //    NSLog(@"PixelBufferCallback: %lu X %lu, formattype=%d, ulLen=%lu", iWidth, iHeight, iFormatType, ulLen);
     //推送到服务端
-    if(self.rtmpSession){
-        [self.rtmpSession PutBuffer:pixelFrameBuffer];
+    @try {
+        if(self.rtmpSession){
+            [self.rtmpSession PutBuffer:pixelFrameBuffer];
+        }
+    } @catch (NSException *exception) {
+        NSLog(@"%@",exception.reason);
+    } @finally {
+        
     }
-}
-
-#pragma mark--GPUImageInput 方法
-- (BOOL)enabled {
-    return true;
-}
-
-- (void)endProcessing {
-    
-}
-
-- (CGSize)maximumOutputSize {
-    return [UIScreen mainScreen].bounds.size;
 }
 #pragma mark--FlutterTexture 方法
 - (CVPixelBufferRef _Nullable)copyPixelBuffer {
-    CVPixelBufferRef pixelBuffer = _latestPixelBuffer;
-    while (!OSAtomicCompareAndSwapPtrBarrier(pixelBuffer, nil, (void **)&_latestPixelBuffer)) {
-      pixelBuffer = _latestPixelBuffer;
-    }
-    printf("copyPixelBuffer\n");
-    printf("pixelBuffer ======%p\n",pixelBuffer);
-    return pixelBuffer;
-}
-- (void)newFrameReadyAtTime:(CMTime)frameTime atIndex:(NSInteger)textureIndex {
-//    runSynchronouslyOnVideoProcessingQueue(^{
-////            if (_recordStatus != RecordStatusRecording)
-////            {
-////                return;
-////            }
-//            @try {
-//                if ( (CMTIME_IS_INVALID(frameTime)) || (CMTIME_COMPARE_INLINE(frameTime, ==, self->_previousFrameTime)) || (CMTIME_IS_INDEFINITE(frameTime)) )
-//                {
-//                    return;
-//                }
-//                if(self->_latestPixelBuffer == nil){
-//                    return;
-//                }
-//                self->_previousFrameTime = frameTime;
-//                [self->_frameUpdater onDisplayLink:nil];
-//                printf("newFrameReadyAtTime\n");
-//            } @catch (NSException *exception) {
-//                printf("newFrameReadyAtTime error");
-//            } @finally {
-//            }
-//    });
-    
-}
-//preview输出
-- (void)setInputFramebuffer:(GPUImageFramebuffer *)newInputFramebuffer atIndex:(NSInteger)textureIndex {
-//    runSynchronouslyOnVideoProcessingQueue(^{
-//        @try {
-//            self->_lastNewInputFramebuffer = newInputFramebuffer;
-//            [self->_lastNewInputFramebuffer lock];
-//            if(self->_lastNewInputFramebuffer == nil || self->_lastNewInputFramebuffer.pixelBuffer == nil){
-//                return;
-//            }
-//            CVPixelBufferRef newBuffer = newInputFramebuffer.pixelBuffer;
-//            CVPixelBufferRef old = self->_latestPixelBuffer;
-//            while (!OSAtomicCompareAndSwapPtrBarrier(old, newBuffer, (void **)&(self->_latestPixelBuffer))) {
-//              old = self->_latestPixelBuffer;
-//            }
-//            printf("newBuffer ======%p\n",newBuffer);
-//            [self->_lastNewInputFramebuffer unlock];
-//            self->_lastNewInputFramebuffer = nil;
-//            printf("setInputFramebuffer\n");
-//        } @catch (NSException *exception) {
-//            printf("setInputFramebuffer error");
-//        } @finally {
-//
-//        }
-//    });
-    self->_lastNewInputFramebuffer = newInputFramebuffer;
-        [self->_lastNewInputFramebuffer lock];
-   
-}
-
-- (NSInteger)nextAvailableTextureIndex {
-    return 0;
-}
-
-- (void)setCurrentlyReceivingMonochromeInput:(BOOL)newValue {
-    
-}
-
-
-- (void)setInputRotation:(GPUImageRotationMode)newInputRotation atIndex:(NSInteger)textureIndex {
-    
-}
-
-- (void)setInputSize:(CGSize)newSize atIndex:(NSInteger)textureIndex {
-    
-}
-
-- (BOOL)shouldIgnoreUpdatesToThisTarget {
-    return NO;
-}
-
-- (BOOL)wantsMonochromeInput {
-    return NO;
+//    _pixelBuffer = _latestPixelBuffer;
+//    while (!OSAtomicCompareAndSwapPtrBarrier(_pixelBuffer, nil, (void **)&_latestPixelBuffer)) {
+//        _pixelBuffer = _latestPixelBuffer;
+//    }
+//    return _pixelBuffer;
+    return _latestPixelBuffer;
 }
 
 @end

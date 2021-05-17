@@ -422,7 +422,7 @@
         _texture.latestPixelBuffer = inputFramebufferForDisplay.pixelBuffer;
         [_frameUpdater onDisplayLink:nil];
         [inputFramebufferForDisplay unlock];
-        inputFramebufferForDisplay = nil;
+        //inputFramebufferForDisplay = nil;
     });
 }
 
