@@ -8,13 +8,31 @@
 #import "LiveContaoller.h"
 #import <libkern/OSAtomic.h>
 #import "GPUImageViewFlutterTexture.h"
+@interface FLTFrameUpdater : NSObject
+@property(nonatomic) int64_t textureId;
+@property(nonatomic, weak, readonly) NSObject<FlutterTextureRegistry>* registry;
+- (void)onDisplayLink:(CADisplayLink*)link;
+@end
 
+@implementation FLTFrameUpdater
+- (FLTFrameUpdater*)initWithRegistry:(NSObject<FlutterTextureRegistry>*)registry {
+  NSAssert(self, @"super init cannot be nil");
+  if (self == nil) return nil;
+  _registry = registry;
+  return self;
+}
+
+- (void)onDisplayLink:(CADisplayLink*)link {
+  [_registry textureFrameAvailable:_textureId];
+}
+@end
 @interface LiveContaoller()
 @property NSString *pathToMovie;
 @property NSString *rmptUrl;
 @property CVPixelBufferRef pixelBuffer;
 @property NSObject<FlutterTextureRegistry>* registry;
 @property (nonatomic, strong) GPUImageViewFlutterTexture *filterView;
+@property FLTFrameUpdater* frameUpdater;
 - (void)getErrorMsg:(NSException*)e method:(NSString*)method;
 @end
 
@@ -31,7 +49,11 @@ fps:(CGFloat)fps
     if (self) {
         @try {
             _registry = registry;
-            self.filterView = [[GPUImageViewFlutterTexture alloc] initWithFrame:CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.width, [UIScreen mainScreen].bounds.size.height) registry:registry texture:self];
+            _textureId = [_registry registerTexture:self];
+            _frameUpdater = [[FLTFrameUpdater alloc] initWithRegistry:_registry];
+            _frameUpdater.textureId = _textureId;
+            
+            self.filterView = [[GPUImageViewFlutterTexture alloc] initWithFrame:CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.width, [UIScreen mainScreen].bounds.size.height) texture:self];
             self.filterView.backgroundColor = [UIColor lightGrayColor];
             self.rmptUrl = rmptUrl;
             NSString *fileName = [rmptUrl substringFromIndex:[rmptUrl rangeOfString:@"/" options:NSBackwardsSearch].location+1];
@@ -167,10 +189,19 @@ fps:(CGFloat)fps
 - (void)reSetVideoBitrate:(FlutterResult)result  type:(NSString*)type{
     [self.videoCamera.captureSession setSessionPreset:[Bitrates getBitrateByType:type]];
 }
+#pragma mark--帧输出
 - (void)setLatestPixelBuffer:(CVPixelBufferRef)latestPixelBuffer{
-    CVPixelBufferRef old = _latestPixelBuffer;
-    while (!OSAtomicCompareAndSwapPtrBarrier(old, latestPixelBuffer, (void**)&_latestPixelBuffer)) {
-        old = _latestPixelBuffer;
+    @try {
+        if(latestPixelBuffer == nil){
+            return;
+        }
+        CVPixelBufferRef old = _latestPixelBuffer;
+        while (!OSAtomicCompareAndSwapPtrBarrier(old, latestPixelBuffer, (void**)&_latestPixelBuffer)) {
+            old = _latestPixelBuffer;
+        }
+        [_frameUpdater onDisplayLink:nil];
+    } @catch (NSException *exception) {
+        NSLog(@"setLatestPixelBuffer error =====%@",exception.reason);
     }
 }
 //截图
@@ -207,18 +238,13 @@ fps:(CGFloat)fps
             [self.rtmpSession PutBuffer:pixelFrameBuffer];
         }
     } @catch (NSException *exception) {
-        NSLog(@"%@",exception.reason);
+        NSLog(@"PixelBufferCallback=======%@",exception.reason);
     } @finally {
         
     }
 }
 #pragma mark--FlutterTexture 方法
 - (CVPixelBufferRef _Nullable)copyPixelBuffer {
-//    _pixelBuffer = _latestPixelBuffer;
-//    while (!OSAtomicCompareAndSwapPtrBarrier(_pixelBuffer, nil, (void **)&_latestPixelBuffer)) {
-//        _pixelBuffer = _latestPixelBuffer;
-//    }
-//    return _pixelBuffer;
     return _latestPixelBuffer;
 }
 

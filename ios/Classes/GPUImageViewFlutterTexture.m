@@ -14,25 +14,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import <libkern/OSAtomic.h>
 #import <Flutter/Flutter.h>
-#import "LiveContaoller.h"
-@interface FLTFrameUpdater : NSObject
-@property(nonatomic) int64_t textureId;
-@property(nonatomic, weak, readonly) NSObject<FlutterTextureRegistry>* registry;
-- (void)onDisplayLink:(CADisplayLink*)link;
-@end
 
-@implementation FLTFrameUpdater
-- (FLTFrameUpdater*)initWithRegistry:(NSObject<FlutterTextureRegistry>*)registry {
-  NSAssert(self, @"super init cannot be nil");
-  if (self == nil) return nil;
-  _registry = registry;
-  return self;
-}
-
-- (void)onDisplayLink:(CADisplayLink*)link {
-  [_registry textureFrameAvailable:_textureId];
-}
-@end
 @interface GPUImageViewFlutterTexture ()
 {
     GPUImageFramebuffer *inputFramebufferForDisplay;
@@ -48,9 +30,7 @@
 
     CGSize boundsSizeAtFrameBufferEpoch;
 }
-@property NSObject<FlutterTextureRegistry>* registry;
 
-@property FLTFrameUpdater* frameUpdater;
 @property (assign, nonatomic) NSUInteger aspectRatio;
 @property(readonly) CVPixelBufferRef volatile latestPixelBuffer;
 @property LiveContaoller *texture;
@@ -80,13 +60,12 @@
     return [CAEAGLLayer class];
 }
 
-- (id)initWithFrame:(CGRect)frame registry:(NSObject<FlutterTextureRegistry>*)registry texture:(NSObject<FlutterTexture>*)texture
+- (id)initWithFrame:(CGRect)frame texture:(LiveContaoller*)texture
 {
     if (!(self = [super initWithFrame:frame]))
     {
         return nil;
     }
-    _registry = registry;
     _texture = texture;
     [self commonInit];
     
@@ -107,9 +86,7 @@
 
 - (void)commonInit;
 {
-    _textureId = [_registry registerTexture:_texture];
-    _frameUpdater = [[FLTFrameUpdater alloc] initWithRegistry:_registry];
-    _frameUpdater.textureId = _textureId;
+    
     // Set scaling to account for Retina display
     if ([self respondsToSelector:@selector(setContentScaleFactor:)])
     {
@@ -419,10 +396,14 @@
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         
         [self presentFramebuffer];
-        _texture.latestPixelBuffer = inputFramebufferForDisplay.pixelBuffer;
-        [_frameUpdater onDisplayLink:nil];
+        CVPixelBufferRef pixelBuffer = inputFramebufferForDisplay.pixelBuffer;
+        CFRetain(pixelBuffer);
+        _texture.latestPixelBuffer = pixelBuffer;
+        if(pixelBuffer != nil){
+            CFRelease(pixelBuffer);
+        }
         [inputFramebufferForDisplay unlock];
-        //inputFramebufferForDisplay = nil;
+        inputFramebufferForDisplay = nil;
     });
 }
 
