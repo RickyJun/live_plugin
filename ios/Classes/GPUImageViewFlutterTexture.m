@@ -32,7 +32,8 @@
 }
 
 @property (assign, nonatomic) NSUInteger aspectRatio;
-@property(readonly) CVPixelBufferRef volatile latestPixelBuffer;
+@property CVPixelBufferRef pixelBuffer;
+@property CMTime lastFrameTime;
 @property LiveContaoller *texture;
 // Initialization and teardown
 - (void)commonInit;
@@ -382,7 +383,6 @@
     runSynchronouslyOnVideoProcessingQueue(^{
         [GPUImageContext setActiveShaderProgram:displayProgram];
         [self setDisplayFramebuffer];
-        
         glClearColor(backgroundColorRed, backgroundColorGreen, backgroundColorBlue, backgroundColorAlpha);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
@@ -395,13 +395,14 @@
         
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         
-        [self presentFramebuffer];
-        CVPixelBufferRef pixelBuffer = inputFramebufferForDisplay.pixelBuffer;
-        CFRetain(pixelBuffer);
-        _texture.latestPixelBuffer = pixelBuffer;
-        if(pixelBuffer != nil){
-            CFRelease(pixelBuffer);
+        //[self presentFramebuffer];
+        CGImageRef imageRef = inputFramebufferForDisplay.newCGImageFromFramebufferContents;
+        CFRetain(_pixelBuffer);
+        _texture.latestPixelBuffer = _pixelBuffer;
+        if(_pixelBuffer != nil){
+            CFRelease(_pixelBuffer);
         }
+        _lastFrameTime = frameTime;
         [inputFramebufferForDisplay unlock];
         inputFramebufferForDisplay = nil;
     });
@@ -415,6 +416,11 @@
 - (void)setInputFramebuffer:(GPUImageFramebuffer *)newInputFramebuffer atIndex:(NSInteger)textureIndex;
 {
     inputFramebufferForDisplay = newInputFramebuffer;
+    _pixelBuffer = inputFramebufferForDisplay.pixelBuffer;
+    if(_pixelBuffer == nil){
+        return;
+    }
+    //CFRetain(_pixelBuffer);
     [inputFramebufferForDisplay lock];
 }
 

@@ -41,7 +41,6 @@ void reportAvailableMemoryForGPUImage(NSString *tag);
 @interface GPUImageOutput : NSObject
 {
     GPUImageFramebuffer *outputFramebuffer;
-    
     NSMutableArray *targets, *targetTextureIndices;
     
     CGSize inputTextureSize, cachedMaximumOutputSize, forcedMaximumSize;

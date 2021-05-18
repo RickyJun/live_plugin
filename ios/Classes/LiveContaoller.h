@@ -7,7 +7,7 @@
 
 #import <Foundation/Foundation.h>
 #import <Flutter/Flutter.h>
-#import <GPUImageVideoCamera.h>
+#import "GPUImageVideoCamera.h"
 #import <GPUImageMovieWriterEx.h>
 #import <videocore/api/iOS/VCRtmpSession.h>
 #import "Constants.h"
