@@ -1,15 +1,4 @@
 # live_plugin
 
-A new flutter plugin project.
-
-## Getting Started
-
-This project is a starting point for a Flutter
-[plug-in package](https://flutter.dev/developing-packages/),
-a specialized package that includes platform-specific implementation code for
-Android and/or iOS.
-
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-
+flutter rtmp协议直播推流插件，android基于开源框架WSlive，ios基于开源框架videoCode，滤镜都是GPUImage，flutter端使用texture进行预览图像。
+开发ing

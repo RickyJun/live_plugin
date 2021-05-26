@@ -195,10 +195,11 @@ fps:(CGFloat)fps
         if(latestPixelBuffer == nil){
             return;
         }
-        CVPixelBufferRef old = _latestPixelBuffer;
-        while (!OSAtomicCompareAndSwapPtrBarrier(old, latestPixelBuffer, (void**)&_latestPixelBuffer)) {
-            old = _latestPixelBuffer;
-        }
+//        CVPixelBufferRef old = _latestPixelBuffer;
+//        while (!OSAtomicCompareAndSwapPtrBarrier(old, latestPixelBuffer, (void**)&_latestPixelBuffer)) {
+//            old = _latestPixelBuffer;
+//        }
+        _latestPixelBuffer = latestPixelBuffer;
         [_frameUpdater onDisplayLink:nil];
     } @catch (NSException *exception) {
         NSLog(@"setLatestPixelBuffer error =====%@",exception.reason);
