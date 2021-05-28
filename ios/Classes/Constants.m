@@ -23,11 +23,13 @@
 @interface Bitrates()
 @end
 @implementation Bitrates
-+ (AVCaptureSessionPreset)getBitrateByType:(NSString *)type{
-    if([type isEqualToString:@"352x288"]){
-        return AVCaptureSessionPreset352x288;
++ (int)getBitrateByType:(NSString *)type{
+    if([type isEqualToString:@"960x540"]){
+        return 960*540;
+    }else if([type isEqualToString:@"352x288"]){
+        return 352*288;
     }else{
-        return AVCaptureSessionPreset1280x720;
+        return 600*1000;
     }
 }
 

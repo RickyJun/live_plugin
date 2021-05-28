@@ -17,7 +17,7 @@ typedef NS_ENUM(NSInteger,RecordStatus) {
     RecordStatusRecording,
     RecordStatusPause
 };
-@interface LiveContaoller : NSObject<FlutterTexture,PixelBufferDelegate>
+@interface LiveController : NSObject<FlutterTexture,PixelBufferDelegate>
 
 //最新一帧数据
 @property (nonatomic) CVPixelBufferRef volatile latestPixelBuffer;
@@ -41,7 +41,7 @@ typedef NS_ENUM(NSInteger,RecordStatus) {
 - (void)startRecord:(FlutterResult)result;
 - (void)recordStatus:(FlutterResult)result;
 //设置/切换滤镜
-- (void)setHardVideoFilterByName:(FlutterResult)result type:(NSString *)type;
+- (void)setHardVideoFilterByName:(FlutterResult)result :(NSString *)type;
 //暂停
 - (void)pauseRecord:(FlutterResult)result;
 //恢复
@@ -51,17 +51,17 @@ typedef NS_ENUM(NSInteger,RecordStatus) {
 //切换摄像头
 - (void)swapCamera:(FlutterResult)result;
 //摄像头焦距 [0.0f,1.0f]
-- (void)setZoomByPercent:(FlutterResult)result targetPercent:(CGFloat)targetPercent;
+- (void)setZoomByPercent:(FlutterResult)result :(NSNumber*)targetPercent;
 //摄像头开关闪光灯
 - (void)toggleFlashLight:(FlutterResult)result;
 // 推流过程中，重新设置帧率
-- (void)reSetVideoFPS:(FlutterResult)result fps:(int32_t)fps;
+- (void)reSetVideoFPS:(FlutterResult)result :(NSNumber*)fps;
 //推流过程中，重新设置码率
-- (void)reSetVideoBitrate:(FlutterResult)result type:(NSString*)type;
+- (void)reSetVideoBitrate:(FlutterResult)result :(NSString*)type;
 //截图
 - (void)takeScreenShot:(FlutterResult)result;
 //镜像
-- (void)setMirror:(FlutterResult)result isEnableMirror:(BOOL)isEnableMirror;
+- (void)setMirror:(FlutterResult)result :(NSNumber*)isEnableMirror;
 
 - (void)setLatestPixelBuffer:(CVPixelBufferRef)latestPixelBuffer;
 @end

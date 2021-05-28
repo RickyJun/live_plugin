@@ -1,5 +1,5 @@
 #import "LivePlugin.h"
-#import "LiveContaoller.h"
+#import "LiveController.h"
 //#if __has_include(<live_plugin/live_plugin-Swift.h>)
 //#import <live_plugin/live_plugin-Swift.h>
 //#else
@@ -18,7 +18,7 @@
 @implementation LivePlugin
 FlutterMethodChannel *channel;
 LivePlugin *instance;
-LiveContaoller *liveController;
+LiveController *liveController;
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
     instance = [[LivePlugin alloc] init];
@@ -35,7 +35,7 @@ LiveContaoller *liveController;
             NSDictionary *args = call.arguments;
             CGFloat videoWidth = [[args valueForKey:@"videoWidth"] floatValue];
             NSString *rtmpUrl = [args valueForKey:@"rmptUrl"];
-            liveController = [[LiveContaoller alloc] initWithOption:CGSizeMake(videoWidth,[[args valueForKey:@"videoHeight"] floatValue]) fps:[[args valueForKey:@"fps"] floatValue] bitrate:[[args valueForKey:@"bitrate"] floatValue] rmptUrl:rtmpUrl registry:self->_registrarTextures];
+            liveController = [[LiveController alloc] initWithOption:CGSizeMake(videoWidth,[[args valueForKey:@"videoHeight"] floatValue]) fps:[[args valueForKey:@"fps"] floatValue] bitrate:[[args valueForKey:@"bitrate"] floatValue] rmptUrl:rtmpUrl registry:self->_registrarTextures];
             [liveController startRecord:result];
             liveController.onError = ^(NSString *errorType,NSString *dec){
                 NSDictionary *errorMsg = [[NSDictionary alloc] init];
@@ -52,8 +52,8 @@ LiveContaoller *liveController;
     }else if([call.method isEqual:@"close"]){
         liveController = nil;
     }else{
-        SEL method = NSSelectorFromString(call.method);
-        if(method != nil && [liveController respondsToSelector:method]){
+        SEL method = NSSelectorFromString([NSString stringWithFormat:@"%@%@",call.method,(call.arguments == nil?@":":@"::")]);
+        if([liveController respondsToSelector:method]){
             @try {
                 if(call.arguments == nil){
                     SuppressPerformSelectorLeakWarning([liveController performSelector:method withObject:result]);

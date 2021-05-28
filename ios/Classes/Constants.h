@@ -13,6 +13,6 @@
 @end
 
 @interface Bitrates : NSObject
-+ (AVCaptureSessionPreset)getBitrateByType:(NSString *)type;
++ (int)getBitrateByType:(NSString *)type;
 @end
 

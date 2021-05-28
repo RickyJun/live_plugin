@@ -34,7 +34,7 @@
 @property (assign, nonatomic) NSUInteger aspectRatio;
 @property CVPixelBufferRef pixelBuffer;
 @property CMTime lastFrameTime;
-@property LiveContaoller *texture;
+@property LiveController *texture;
 // Initialization and teardown
 - (void)commonInit;
 
@@ -61,7 +61,7 @@
     return [CAEAGLLayer class];
 }
 
-- (id)initWithFrame:(CGRect)frame texture:(LiveContaoller*)texture
+- (id)initWithFrame:(CGRect)frame texture:(LiveController*)texture
 {
     if (!(self = [super initWithFrame:frame]))
     {

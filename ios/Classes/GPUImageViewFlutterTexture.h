@@ -10,7 +10,7 @@
 #import <GPUImageOutput.h>
 #import "GPUImageContext.h"
 #import "GPUImageView.h"
-#import "LiveContaoller.h"
+#import "LiveController.h"
 @interface GPUImageViewFlutterTexture : UIView<GPUImageInput>
 {
     GPUImageRotationMode inputRotation;
@@ -35,7 +35,7 @@
  @param blueComponent Blue component for background color
  @param alphaComponent Alpha component for background color
  */
-- (id)initWithFrame:(CGRect)frame texture:(LiveContaoller*)texture;
+- (id)initWithFrame:(CGRect)frame texture:(LiveController*)texture;
 - (void)setBackgroundColorRed:(GLfloat)redComponent green:(GLfloat)greenComponent blue:(GLfloat)blueComponent alpha:(GLfloat)alphaComponent;
 
 - (void)setCurrentlyReceivingMonochromeInput:(BOOL)newValue;

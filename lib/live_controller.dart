@@ -93,7 +93,7 @@ class LiveController {
   }
 
   void setZoomByPercent(double targetPercent) {
-    assert(targetPercent > 0.0 && targetPercent < 1.0);
+    //assert(targetPercent >= 0.0 && targetPercent <= 1.0);
     _channel.invokeMethod("setZoomByPercent", targetPercent);
   }
 
@@ -121,7 +121,7 @@ class LiveController {
   }
 
   void setMirror(bool isEnableMirror) async {
-    int res = await _channel.invokeMethod("setMirror", isEnableMirror);
+    int res = await _channel.invokeMethod("setMirror", isEnableMirror ? 1 : 0);
     if (res != null && res == 0) {
       this.isEnableMirror = isEnableMirror;
     }

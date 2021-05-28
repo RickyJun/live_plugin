@@ -5,7 +5,7 @@
 //  Created by wenwenjun on 2021/3/23.
 //
 
-#import "LiveContaoller.h"
+#import "LiveController.h"
 #import <libkern/OSAtomic.h>
 #import "GPUImageViewFlutterTexture.h"
 #define VIDEO_SIZE CGSizeMake(360, 640)
@@ -27,7 +27,7 @@
   [_registry textureFrameAvailable:_textureId];
 }
 @end
-@interface LiveContaoller()
+@interface LiveController()
 @property NSString *pathToMovie;
 @property NSString *rmptUrl;
 @property CVPixelBufferRef pixelBuffer;
@@ -37,8 +37,8 @@
 - (void)getErrorMsg:(NSException*)e method:(NSString*)method;
 @end
 
-@implementation LiveContaoller
-#pragma mark--LiveContaoller 方法
+@implementation LiveController
+#pragma mark--LiveController 方法
 - (void)getErrorMsg:(NSException*)e method:(NSString*)method{
     _onError([NSString  stringWithFormat:@"%@ err %@",method,e.name],[NSString stringWithFormat:@"msg:%@ cause:%@",e.reason,e.userInfo]);
 }
@@ -80,8 +80,10 @@ fps:(CGFloat)fps
             _pathToMovie = [NSHomeDirectory() stringByAppendingPathComponent:path];
             unlink([_pathToMovie UTF8String]); // If a file already exists, AVAssetWriter won't let you record new frames, so delete the old movie
             NSURL *movieURL = [NSURL fileURLWithPath:_pathToMovie];
-            //self.movieWriter = [[GPUImageMovieWriterEx alloc] initWithMovieURL:movieURL size:CGSizeMake(360.0, 640.0)];
             self.movieWriter = [[GPUImageMovieWriterEx alloc] initWithMovieURL:movieURL size:VIDEO_SIZE];
+            self.movieWriter.failureBlock = ^(NSError* error){
+                printf("failureBlock error=======%ld=======================", error.code);
+            };
             self.movieWriter.encodingLiveVideo = YES;
             self.movieWriter.pixelBufferdelegate = self;
             [self.videoCamera addTarget:self.movieWriter];
@@ -120,14 +122,13 @@ fps:(CGFloat)fps
 }
 
 //设置/切换滤镜
-- (void)setHardVideoFilterByName:(FlutterResult)result type:(NSString *)type{
+- (void)setHardVideoFilterByName:(FlutterResult)result :(NSString *)type{
     if(type == nil){
         return;
     }
     @try {
-        if([[_videoCamera targets] containsObject:self.filterView]){
-            [_videoCamera removeTarget:self.filterView];
-        }
+        [_videoCamera pauseCameraCapture];
+        [_videoCamera removeAllTargets];
         if(_filter != nil){
             [_filter removeAllTargets];
             [_videoCamera removeTarget:_filter];
@@ -135,7 +136,9 @@ fps:(CGFloat)fps
         _filter = [Filters getFilterByType:type];
         if(_filter != nil){
             [_filter addTarget:self.filterView];
+            [_filter addTarget:self.movieWriter];
             [_videoCamera addTarget:_filter];
+            [_videoCamera resumeCameraCapture];
         }
     } @catch (NSException *exception) {
         [self getErrorMsg:exception method:@"setHardVideoFilterByName"];
@@ -162,7 +165,12 @@ fps:(CGFloat)fps
     
 }
 - (void)swapCamera:(FlutterResult)result{
+    [self.videoCamera removeAllTargets];
+    [self.videoCamera pauseCameraCapture];
     [self.videoCamera rotateCamera];
+    [self.videoCamera resumeCameraCapture];
+    [self.videoCamera addTarget:self.movieWriter];
+    [self.videoCamera addTarget:self.filterView];
 }
 - (void)pauseRecord:(FlutterResult)result{
     [self.videoCamera pauseCameraCapture];
@@ -175,21 +183,65 @@ fps:(CGFloat)fps
 }
 #pragma mark--视频其他控制
 //摄像头焦距 [0.0f,1.0f]
-- (void)setZoomByPercent:(FlutterResult)result targetPercent:(CGFloat)targetPercent{
-    [self.videoCamera.inputCamera setVideoZoomFactor:targetPercent];
+- (void)setZoomByPercent:(FlutterResult)result :(NSNumber*)targetPercent{
+    NSError *error = nil;
+    BOOL locked = [self.videoCamera.inputCamera lockForConfiguration:&error];
+    if(error){
+        printf("setZoomByPercent error");
+        return;
+    }
+    if(locked){
+        [self.videoCamera.inputCamera rampToVideoZoomFactor:[targetPercent floatValue] withRate:50];
+//        if ([self.videoCamera.inputCamera isFocusModeSupported:AVCaptureFocusModeContinuousAutoFocus]) [self.videoCamera.inputCamera setFocusModeLockedWithLensPosition:[targetPercent floatValue] completionHandler:nil];
+        [self.videoCamera.inputCamera unlockForConfiguration];
+    }
+    
 }
 //摄像头开关闪光灯
+BOOL isOpen = NO;
+
 - (void)toggleFlashLight:(FlutterResult)result {
-    AVCaptureFlashMode mode = self.videoCamera.inputCamera.flashMode == AVCaptureFlashModeOn?AVCaptureFlashModeOff:AVCaptureFlashModeOn;
-    [self.videoCamera.inputCamera setFlashMode:mode];
+    NSError *error = nil;
+//    AVCaptureFlashMode mode = self.videoCamera.inputCamera.flashMode == AVCaptureFlashModeOn?AVCaptureFlashModeOff:AVCaptureFlashModeOn;
+    if([self.videoCamera.inputCamera hasTorch]){
+        if(isOpen == NO){
+            BOOL locked = [self.videoCamera.inputCamera lockForConfiguration:&error];
+            if(locked){
+                self.videoCamera.inputCamera.torchMode = AVCaptureTorchModeOn;
+                [self.videoCamera.inputCamera unlockForConfiguration];
+            }
+            isOpen = YES;
+        }else{
+            [self.videoCamera.inputCamera lockForConfiguration:nil];
+            [self.videoCamera.inputCamera setTorchMode: AVCaptureTorchModeOff];
+            [self.videoCamera.inputCamera unlockForConfiguration];
+            isOpen = NO;
+            
+        }
+        
+    }
+    
 }
 // 推流过程中，重新设置帧率
-- (void)reSetVideoFPS:(FlutterResult)result fps:(int32_t)fps{
-    [self.videoCamera setFrameRate:fps];
+- (void)reSetVideoFPS:(FlutterResult)result :(NSNumber*)fps{
+    NSError *error = nil;
+    BOOL locked = [self.videoCamera.inputCamera lockForConfiguration:&error];
+    if(error){
+        printf("setZoomByPercent error");
+        return;
+    }
+    if(locked){
+        [self.videoCamera setFrameRate:[fps intValue]];
+        [self.videoCamera.inputCamera unlockForConfiguration];
+    }
+    printf("setFrameRate now=%d",self.videoCamera.frameRate);
+    
 }
 //推流过程中，重新设置码率
-- (void)reSetVideoBitrate:(FlutterResult)result  type:(NSString*)type{
-    [self.videoCamera.captureSession setSessionPreset:[Bitrates getBitrateByType:type]];
+- (void)reSetVideoBitrate:(FlutterResult)result  :(NSString*)type{
+    [self.rtmpSession setBitrate:[Bitrates getBitrateByType:type]];
+    printf("bitrate now=%d",self.rtmpSession.bitrate);
+    
 }
 #pragma mark--帧输出
 - (void)setLatestPixelBuffer:(CVPixelBufferRef)latestPixelBuffer{
@@ -216,13 +268,23 @@ fps:(CGFloat)fps
     *  isEnablePreviewMirror  是否开启预览镜像
     * isEnableStreamMirror   是否开启推流镜像
 */
-- (void)setMirror:(FlutterResult)result isEnableMirror:(BOOL)isEnableMirror{
-    if([self.videoCamera isFrontFacingCameraPresent]){
-        [self.videoCamera setHorizontallyMirrorFrontFacingCamera:isEnableMirror];
-        
-    }else{
-        [self.videoCamera setHorizontallyMirrorRearFacingCamera:isEnableMirror];
+- (void)setMirror:(FlutterResult)result :(NSNumber*)isEnableMirror{
+    NSError *error = nil;
+    BOOL locked = [self.videoCamera.inputCamera lockForConfiguration:&error];
+    if(error){
+        printf("setZoomByPercent error");
+        return;
     }
+    if(locked){
+        if(self.videoCamera.cameraPosition == AVCaptureDevicePositionFront){
+            [self.videoCamera setHorizontallyMirrorFrontFacingCamera:[isEnableMirror boolValue]];
+            
+        }else{
+            [self.videoCamera setHorizontallyMirrorRearFacingCamera:[isEnableMirror boolValue]];
+        }
+        [self.videoCamera.inputCamera unlockForConfiguration];
+    }
+    
 }
 #pragma mark--视频数据处理回调（PixelBufferDelegate）
 -(void)PixelBufferCallback:(CVPixelBufferRef)pixelFrameBuffer{
@@ -232,6 +294,7 @@ fps:(CGFloat)fps
 //    int iFormatType = CVPixelBufferGetPixelFormatType(pixelFrameBuffer);
 //    NSLog(@"PixelBufferCallback: %lu X %lu, formattype=%d, ulLen=%lu", iWidth, iHeight, iFormatType, ulLen);
     //推送到服务端
+   
     @try {
         [self.rtmpSession PutBuffer:pixelFrameBuffer];
     } @catch (NSException *exception) {
