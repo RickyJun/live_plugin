@@ -8,6 +8,7 @@
 #import "LiveContaoller.h"
 #import <libkern/OSAtomic.h>
 #import "GPUImageViewFlutterTexture.h"
+#define VIDEO_SIZE CGSizeMake(360, 640)
 @interface FLTFrameUpdater : NSObject
 @property(nonatomic) int64_t textureId;
 @property(nonatomic, weak, readonly) NSObject<FlutterTextureRegistry>* registry;
@@ -58,27 +59,29 @@ fps:(CGFloat)fps
             self.rmptUrl = rmptUrl;
             NSString *fileName = [rmptUrl substringFromIndex:[rmptUrl rangeOfString:@"/" options:NSBackwardsSearch].location+1];
             //初始化session
-            self.rtmpSession = [[VCRtmpSession alloc] initWithVideoSize:videoSize fps:fps bitrate:bitrate];
+            self.rtmpSession = [[VCRtmpSession alloc] initWithVideoSize:VIDEO_SIZE fps:25 bitrate:600*1000];
+            self.rmptUrl = @"rtmp://192.168.139.124/live/livestream";
+            [self.rtmpSession startRtmpSession:self.rmptUrl];
             [[GPUImageContext sharedFramebufferCache] purgeAllUnassignedFramebuffers];
             //初始化播放器
             self.videoCamera = [[GPUImageVideoCamera alloc] initWithSessionPreset:AVCaptureSessionPreset1280x720 cameraPosition:AVCaptureDevicePositionFront];
-            self.videoCamera.outputImageOrientation = UIInterfaceOrientationPortrait;
-            self.videoCamera.horizontallyMirrorFrontFacingCamera = NO;
+            self.videoCamera.outputImageOrientation = UIDeviceOrientationPortrait;
+            self.videoCamera.horizontallyMirrorFrontFacingCamera = YES;
             self.videoCamera.horizontallyMirrorRearFacingCamera = NO;
             //设置预览的屏幕尺寸
             AVCaptureSession* session = self.videoCamera.captureSession;
+            [session setSessionPreset:AVCaptureSessionPreset1280x720];
             AVCaptureVideoPreviewLayer* previewLayer;
             previewLayer = [AVCaptureVideoPreviewLayer layerWithSession:session];
             previewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
             previewLayer.frame = [UIScreen mainScreen].bounds;
             //初始化编码器
-            NSString *path = [NSString stringWithFormat:@"Documents/Movie%@%d.m4v",fileName,6];
+            NSString *path = [NSString stringWithFormat:@"Documents/Movie%@%d.m4v",fileName,7];
             _pathToMovie = [NSHomeDirectory() stringByAppendingPathComponent:path];
-            //_pathToMovie = [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/Movie.m4v"];
             unlink([_pathToMovie UTF8String]); // If a file already exists, AVAssetWriter won't let you record new frames, so delete the old movie
             NSURL *movieURL = [NSURL fileURLWithPath:_pathToMovie];
             //self.movieWriter = [[GPUImageMovieWriterEx alloc] initWithMovieURL:movieURL size:CGSizeMake(360.0, 640.0)];
-            self.movieWriter = [[GPUImageMovieWriterEx alloc] initWithMovieURL:movieURL size:videoSize];
+            self.movieWriter = [[GPUImageMovieWriterEx alloc] initWithMovieURL:movieURL size:VIDEO_SIZE];
             self.movieWriter.encodingLiveVideo = YES;
             self.movieWriter.pixelBufferdelegate = self;
             [self.videoCamera addTarget:self.movieWriter];
@@ -102,7 +105,6 @@ fps:(CGFloat)fps
     _textureId = self.filterView.textureId;
     //开始录制
     @try {
-        [self.rtmpSession startRtmpSession:self.rmptUrl];
         [self.videoCamera startCameraCapture];
         [self.movieWriter startRecording];
         _recordStatus = RecordStatusRecording;
@@ -195,10 +197,6 @@ fps:(CGFloat)fps
         if(latestPixelBuffer == nil){
             return;
         }
-//        CVPixelBufferRef old = _latestPixelBuffer;
-//        while (!OSAtomicCompareAndSwapPtrBarrier(old, latestPixelBuffer, (void**)&_latestPixelBuffer)) {
-//            old = _latestPixelBuffer;
-//        }
         _latestPixelBuffer = latestPixelBuffer;
         [_frameUpdater onDisplayLink:nil];
     } @catch (NSException *exception) {
@@ -235,9 +233,7 @@ fps:(CGFloat)fps
 //    NSLog(@"PixelBufferCallback: %lu X %lu, formattype=%d, ulLen=%lu", iWidth, iHeight, iFormatType, ulLen);
     //推送到服务端
     @try {
-        if(self.rtmpSession){
-            [self.rtmpSession PutBuffer:pixelFrameBuffer];
-        }
+        [self.rtmpSession PutBuffer:pixelFrameBuffer];
     } @catch (NSException *exception) {
         NSLog(@"PixelBufferCallback=======%@",exception.reason);
     } @finally {

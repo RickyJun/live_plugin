@@ -54,12 +54,17 @@ LiveContaoller *liveController;
     }else{
         SEL method = NSSelectorFromString(call.method);
         if(method != nil && [liveController respondsToSelector:method]){
-            if(call.arguments == nil){
-                SuppressPerformSelectorLeakWarning([liveController performSelector:method withObject:result]);
-            }else{
-                SuppressPerformSelectorLeakWarning([liveController performSelector:method withObject:result withObject:call.arguments]);
+            @try {
+                if(call.arguments == nil){
+                    SuppressPerformSelectorLeakWarning([liveController performSelector:method withObject:result]);
+                }else{
+                    SuppressPerformSelectorLeakWarning([liveController performSelector:method withObject:result withObject:call.arguments]);
+                }
+            } @catch (NSException *exception) {
+                result(@"liveController call method NSException");
             }
-            
+        }else{
+            result(@"no implement method");
         }
     }
 }
