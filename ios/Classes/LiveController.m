@@ -60,7 +60,7 @@ fps:(CGFloat)fps
             NSString *fileName = [rmptUrl substringFromIndex:[rmptUrl rangeOfString:@"/" options:NSBackwardsSearch].location+1];
             //初始化session
             self.rtmpSession = [[VCRtmpSession alloc] initWithVideoSize:VIDEO_SIZE fps:25 bitrate:600*1000];
-            self.rmptUrl = @"rtmp://192.168.139.124/live/livestream";
+            //self.rmptUrl = @"rtmp://192.168.139.124/live/livestream";
             [self.rtmpSession startRtmpSession:self.rmptUrl];
             [[GPUImageContext sharedFramebufferCache] purgeAllUnassignedFramebuffers];
             //初始化播放器

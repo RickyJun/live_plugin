@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -92,9 +94,14 @@ class LiveController {
     _channel.invokeMethod("swapCamera");
   }
 
+  // ios range: from 1 to 3,android range : from 0.0 to 1.0
   void setZoomByPercent(double targetPercent) {
-    //assert(targetPercent >= 0.0 && targetPercent <= 1.0);
-    _channel.invokeMethod("setZoomByPercent", targetPercent);
+    assert(targetPercent >= 1 && targetPercent <= 3);
+    if (Platform.isIOS) {
+      _channel.invokeMethod("setZoomByPercent", targetPercent);
+    } else {
+      _channel.invokeMethod("setZoomByPercent", targetPercent / 3);
+    }
   }
 
   void toggleFlashLight() {

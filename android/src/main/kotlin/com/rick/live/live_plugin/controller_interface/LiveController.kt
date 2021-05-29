@@ -35,7 +35,7 @@ abstract class LiveController {
     /**
      * 摄像头焦距 [0.0f,1.0f]
      */
-    open fun setZoomByPercent(result: MethodChannel.Result,targetPercent: Float) {}
+    open fun setZoomByPercent(result: MethodChannel.Result,targetPercent: Double) {}
     /**
      * 摄像头开关闪光灯
      */
@@ -58,7 +58,7 @@ abstract class LiveController {
      * isEnablePreviewMirror  是否开启预览镜像
      *  isEnableStreamMirror   是否开启推流镜像
      */
-    open fun setMirror(result: MethodChannel.Result,isEnableMirror: Boolean):Int {return -1}
+    open fun setMirror(result: MethodChannel.Result,isEnableMirror: Int):Int {return -1}
     /**
      * 设置滤镜
      */

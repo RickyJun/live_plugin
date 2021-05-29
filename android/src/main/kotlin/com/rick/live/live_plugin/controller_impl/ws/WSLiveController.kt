@@ -265,7 +265,7 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
     }
     override fun resumeRecord(result: MethodChannel.Result){
         try {
-            if(recordStatus == RecordStatus.Pause || recordStatus == RecordStatus.Stop){
+            if(recordStatus == RecordStatus.Pause){
                 resClient.startPreview(surfaceTexture,avOption.videoWidth,avOption.videoHeight)
                 recordStatus = RecordStatus.Recording
             }
@@ -280,6 +280,7 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
     override fun stopRecord(result: MethodChannel.Result): String? {
         try {
             stopStreaming(result)
+            resClient.stopPreview(true);
             recordStatus = RecordStatus.Stop
             val path: String = mMuxer.getFilePath()
             mMuxer.stopRecording()
@@ -303,14 +304,13 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
     /**
      * 摄像头焦距 [0.0f,1.0f]
      */
-    override fun setZoomByPercent(result: MethodChannel.Result,targetPercent: Float) {
-        this.resClient.setZoomByPercent(targetPercent)
+    override fun setZoomByPercent(result: MethodChannel.Result,targetPercent: Double) {
+        this.resClient.setZoomByPercent(targetPercent.toFloat())
     }
 
     /**
      * 摄像头开关闪光灯
      */
-    //var flashMode:FlashMode = FlashMode.off
     override fun toggleFlashLight(result: MethodChannel.Result) {
         this.resClient.toggleFlashLight()
     }
@@ -352,9 +352,10 @@ class WSLiveController(val flutterTexture: TextureRegistry.SurfaceTextureEntry, 
      * isEnablePreviewMirror  是否开启预览镜像
      *  isEnableStreamMirror   是否开启推流镜像
      */
-    override fun setMirror(result: MethodChannel.Result,isEnableMirror: Boolean):Int {
+    override fun setMirror(result: MethodChannel.Result,isEnableMirror: Int):Int {
         if (this.resClient != null) {
-            this.resClient.setMirror(isEnableMirror, isEnableMirror, isEnableMirror)
+            var enableMirror = isEnableMirror==1
+            this.resClient.setMirror(true, enableMirror,enableMirror )
             return 0;
         }
         return -1;
