@@ -24,7 +24,8 @@ class Filters{
     companion object{
         fun getFilterByType(type:String): BaseHardVideoFilter {
             return when(type){
-                "GPUImageBeautyFilter" -> GPUImageCompatibleFilter(GPUImageBeautyFilter());
+                "GPUImageBeautyFilter" -> GPUImageCompatibleFilter(GPUImageBeautyFilter())
+                "GPUImageBeautyFilter" -> GPUImageCompatibleFilter(GPUImageBeautyFilter())
                 else -> {
                     GPUImageCompatibleFilter(GPUImageBeautyFilter());
                 }

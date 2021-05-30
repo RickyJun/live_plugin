@@ -23,8 +23,6 @@ typedef NS_ENUM(NSInteger,RecordStatus) {
 @property (nonatomic) CVPixelBufferRef volatile latestPixelBuffer;
 
 @property(readonly) RecordStatus recordStatus;
-//最新帧可用回调
-@property(nonatomic, copy) void (^onFrameAvailable)(void);
 
 //播放控制器
 @property (atomic, strong) GPUImageVideoCamera *videoCamera;

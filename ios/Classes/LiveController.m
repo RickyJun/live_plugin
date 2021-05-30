@@ -82,7 +82,7 @@ fps:(CGFloat)fps
             NSURL *movieURL = [NSURL fileURLWithPath:_pathToMovie];
             self.movieWriter = [[GPUImageMovieWriterEx alloc] initWithMovieURL:movieURL size:VIDEO_SIZE];
             self.movieWriter.failureBlock = ^(NSError* error){
-                printf("failureBlock error=======%ld=======================", error.code);
+                self->_onError(@"NSError",[NSString stringWithFormat:@"error.localizedFailureReason=%@,error.localizedDescription=%@",error.localizedFailureReason,error.localizedDescription]);
             };
             self.movieWriter.encodingLiveVideo = YES;
             self.movieWriter.pixelBufferdelegate = self;
@@ -117,9 +117,7 @@ fps:(CGFloat)fps
     }
     
 }
-- (void)recordStatus:(FlutterResult)result{
-    
-}
+
 
 //设置/切换滤镜
 - (void)setHardVideoFilterByName:(FlutterResult)result :(NSString *)type{
@@ -173,16 +171,23 @@ fps:(CGFloat)fps
     [self.videoCamera addTarget:self.filterView];
 }
 - (void)pauseRecord:(FlutterResult)result{
-    [self.videoCamera pauseCameraCapture];
-    _recordStatus = RecordStatusPause;
+    if(_recordStatus == RecordStatusRecording){
+        [self.videoCamera pauseCameraCapture];
+        _recordStatus = RecordStatusPause;
+    }
+    
 
 }
 - (void)resumeRecord:(FlutterResult)result{
-    [self.videoCamera resumeCameraCapture];
-    _recordStatus = RecordStatusRecording;
+    if(_recordStatus == RecordStatusPause){
+        [self.videoCamera resumeCameraCapture];
+        _recordStatus = RecordStatusRecording;
+    }else if(_recordStatus == RecordStatusStop){
+        _onError(@"resumeRecord error:",@"resumeRecord can't call when had stop record or ");
+    }
 }
 #pragma mark--视频其他控制
-//摄像头焦距 [0.0f,1.0f]
+//摄像头焦距 [0,3],数码变焦
 - (void)setZoomByPercent:(FlutterResult)result :(NSNumber*)targetPercent{
     NSError *error = nil;
     BOOL locked = [self.videoCamera.inputCamera lockForConfiguration:&error];
@@ -202,7 +207,6 @@ BOOL isOpen = NO;
 
 - (void)toggleFlashLight:(FlutterResult)result {
     NSError *error = nil;
-//    AVCaptureFlashMode mode = self.videoCamera.inputCamera.flashMode == AVCaptureFlashModeOn?AVCaptureFlashModeOff:AVCaptureFlashModeOn;
     if([self.videoCamera.inputCamera hasTorch]){
         if(isOpen == NO){
             BOOL locked = [self.videoCamera.inputCamera lockForConfiguration:&error];
@@ -227,20 +231,17 @@ BOOL isOpen = NO;
     NSError *error = nil;
     BOOL locked = [self.videoCamera.inputCamera lockForConfiguration:&error];
     if(error){
-        printf("setZoomByPercent error");
         return;
     }
     if(locked){
         [self.videoCamera setFrameRate:[fps intValue]];
         [self.videoCamera.inputCamera unlockForConfiguration];
     }
-    printf("setFrameRate now=%d",self.videoCamera.frameRate);
     
 }
 //推流过程中，重新设置码率
 - (void)reSetVideoBitrate:(FlutterResult)result  :(NSString*)type{
     [self.rtmpSession setBitrate:[Bitrates getBitrateByType:type]];
-    printf("bitrate now=%d",self.rtmpSession.bitrate);
     
 }
 #pragma mark--帧输出
@@ -252,7 +253,7 @@ BOOL isOpen = NO;
         _latestPixelBuffer = latestPixelBuffer;
         [_frameUpdater onDisplayLink:nil];
     } @catch (NSException *exception) {
-        NSLog(@"setLatestPixelBuffer error =====%@",exception.reason);
+        [self getErrorMsg:exception method:@"setLatestPixelBuffer"];
     }
 }
 //截图
@@ -272,7 +273,6 @@ BOOL isOpen = NO;
     NSError *error = nil;
     BOOL locked = [self.videoCamera.inputCamera lockForConfiguration:&error];
     if(error){
-        printf("setZoomByPercent error");
         return;
     }
     if(locked){
@@ -298,7 +298,7 @@ BOOL isOpen = NO;
     @try {
         [self.rtmpSession PutBuffer:pixelFrameBuffer];
     } @catch (NSException *exception) {
-        NSLog(@"PixelBufferCallback=======%@",exception.reason);
+        
     } @finally {
         
     }

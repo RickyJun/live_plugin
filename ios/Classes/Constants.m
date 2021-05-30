@@ -9,9 +9,16 @@
 @interface Filters()
 @end
 @implementation Filters
+
+
+
+
 + (GPUImageOutput<GPUImageInput> *)getFilterByType:(NSString *)type{
-    GPUImageOutput<GPUImageInput> *defaultFilter = [[GPUImageBeautifyFilter alloc] init];
+    GPUImageBeautifyFilter *defaultFilter = [[GPUImageBeautifyFilter alloc] init];
     if([type isEqualToString:@"GPUImageBeautyFilter"]){
+        GPUImageBrightnessFilter *brightnessFilter = [[GPUImageBrightnessFilter alloc] init];
+        brightnessFilter.brightness = 0;
+        [defaultFilter addFilter:brightnessFilter];
         return defaultFilter;
     }else{
         return defaultFilter;

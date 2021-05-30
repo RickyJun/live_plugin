@@ -20,7 +20,8 @@ class LivePlugin {
       int fps,
       int bitrate,
       int videoWidth,
-      int videoHeight}) async {
+      int videoHeight,
+      Function(Map msg) errorMsghandler}) async {
     _liveController = LiveController(_channel,
         rmptServer: rmptServer,
         fps: fps,
@@ -28,16 +29,20 @@ class LivePlugin {
         videoWidth: videoWidth,
         videoHeight: videoHeight);
     await _liveController.initLiveConfig();
+    setErrorMagHandler(errorMsghandler);
     return _liveController;
   }
 
-  static void setHandler({Function(Map msg) handler}) {
+  static void setErrorMagHandler(Function(Map msg) handler) {
     _channel.setMethodCallHandler((call) {
       switch (call.method) {
         case "error":
           {
-            handler(call.arguments);
-            print(call.arguments.toString());
+            if (handler != null) {
+              handler(call.arguments);
+            }
+            print("setMethodCallHandler==============" +
+                call.arguments.toString());
             break;
           }
         default:

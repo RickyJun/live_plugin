@@ -81,10 +81,6 @@ class LiveController {
     await _channel.invokeMethod("pauseRecord");
   }
 
-  void resumeRecord() async {
-    await _channel.invokeMethod("resumeRecord");
-  }
-
   Future<String> stopRecord() async {
     String path = await _channel.invokeMethod("stopRecord");
     return path;
